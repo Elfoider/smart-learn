@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+} from "next/font/google";
 import { Toaster } from "sonner";
 
+import { AuthProvider } from "@/components/providers/auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { siteConfig } from "@/config/site";
 
@@ -66,13 +70,15 @@ export default function RootLayout({
           disableTransitionOnChange
           storageKey="smart-learn-theme"
         >
-          {children}
+          <AuthProvider>
+            {children}
 
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-          />
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+            />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
