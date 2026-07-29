@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 
-import { RoleWelcome } from "@/components/auth/role-welcome";
+import { TeacherDashboard } from "@/components/teacher/teacher-dashboard";
 
 export const metadata: Metadata = {
   title: "Portal docente",
+  description:
+    "Panel de gestión académica para docentes universitarios.",
 };
 
 export default function TeacherPage() {
-  return (
-    <RoleWelcome
-      role="teacher"
-      title="Tu centro de gestión docente está preparado."
-      description="Más adelante construiremos aquí la administración de asignaturas, estudiantes, planificaciones, evaluaciones, asistencia, reportes y herramientas de inteligencia artificial."
-    />
-  );
+  return <TeacherDashboard />;
 }
