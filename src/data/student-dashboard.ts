@@ -101,7 +101,7 @@ export const studentActivities: StudentActivity[] = [
     type: "exam",
     dueLabel: "En 4 días",
     urgent: false,
-    href: "/student/courses",
+    href: "/student/exams",
   },
 ];
 

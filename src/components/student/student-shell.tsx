@@ -12,12 +12,10 @@ import {
   Search,
   Sparkles,
   X,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  usePathname,
-  useRouter,
-} from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -49,6 +47,11 @@ const navigationItems: NavigationItem[] = [
     icon: BookOpen,
   },
   {
+    label: "Evaluaciones",
+    href: "/student/exams",
+    icon: ClipboardCheck,
+  },
+  {
     label: "Calendario",
     href: "/student/calendar",
     icon: CalendarDays,
@@ -78,22 +81,15 @@ function getInitials(name?: string) {
     .join("");
 }
 
-export function StudentShell({
-  children,
-}: StudentShellProps) {
+export function StudentShell({ children }: StudentShellProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const {
-    profile,
-    signOut,
-  } = useAuth();
+  const { profile, signOut } = useAuth();
 
-  const [mobileMenuOpen, setMobileMenuOpen] =
-    useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [closingSession, setClosingSession] =
-    useState(false);
+  const [closingSession, setClosingSession] = useState(false);
 
   function isActive(item: NavigationItem) {
     if (item.exact) {
@@ -115,9 +111,7 @@ export function StudentShell({
     }
   }
 
-  const profileInitials = getInitials(
-    profile?.name,
-  );
+  const profileInitials = getInitials(profile?.name);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -168,8 +162,7 @@ export function StudentShell({
                   aria-hidden="true"
                   className={cn(
                     "h-5 w-5 shrink-0 transition-transform duration-300",
-                    !active &&
-                      "group-hover:scale-105",
+                    !active && "group-hover:scale-105",
                   )}
                 />
 
@@ -181,10 +174,7 @@ export function StudentShell({
 
         <div className="rounded-3xl border border-primary/15 bg-secondary p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <Sparkles
-              aria-hidden="true"
-              className="h-5 w-5"
-            />
+            <Sparkles aria-hidden="true" className="h-5 w-5" />
           </div>
 
           <p className="mt-4 text-sm font-semibold text-secondary-foreground">
@@ -209,14 +199,9 @@ export function StudentShell({
           disabled={closingSession}
           className="mt-4 flex min-h-11 items-center gap-3 rounded-2xl px-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-60"
         >
-          <LogOut
-            aria-hidden="true"
-            className="h-5 w-5"
-          />
+          <LogOut aria-hidden="true" className="h-5 w-5" />
 
-          {closingSession
-            ? "Cerrando sesión..."
-            : "Cerrar sesión"}
+          {closingSession ? "Cerrando sesión..." : "Cerrar sesión"}
         </button>
       </aside>
 
@@ -231,10 +216,7 @@ export function StudentShell({
               aria-label="Abrir navegación"
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-card lg:hidden"
             >
-              <Menu
-                aria-hidden="true"
-                className="h-5 w-5"
-              />
+              <Menu aria-hidden="true" className="h-5 w-5" />
             </button>
 
             <div className="hidden max-w-md flex-1 md:block">
@@ -258,10 +240,7 @@ export function StudentShell({
                 aria-label="Ver notificaciones"
                 className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-card/70 text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground"
               >
-                <Bell
-                  aria-hidden="true"
-                  className="h-5 w-5"
-                />
+                <Bell aria-hidden="true" className="h-5 w-5" />
 
                 <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-danger ring-2 ring-card" />
               </button>
@@ -292,7 +271,7 @@ export function StudentShell({
         </div>
       </div>
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-[1.6rem] border border-border bg-card/90 p-2 shadow-2xl backdrop-blur-2xl lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-6 rounded-[1.6rem] border border-border bg-card/90 p-2 shadow-2xl backdrop-blur-2xl lg:hidden">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
@@ -308,14 +287,9 @@ export function StudentShell({
                   : "text-muted-foreground",
               )}
             >
-              <Icon
-                aria-hidden="true"
-                className="h-5 w-5"
-              />
+              <Icon aria-hidden="true" className="h-5 w-5" />
 
-              <span className="max-w-full truncate">
-                {item.label}
-              </span>
+              <span className="max-w-full truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -344,10 +318,7 @@ export function StudentShell({
                 aria-label="Cerrar menú"
                 className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border"
               >
-                <X
-                  aria-hidden="true"
-                  className="h-5 w-5"
-                />
+                <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
 
@@ -386,10 +357,7 @@ export function StudentShell({
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <Icon
-                      aria-hidden="true"
-                      className="h-5 w-5"
-                    />
+                    <Icon aria-hidden="true" className="h-5 w-5" />
 
                     {item.label}
                   </Link>
@@ -403,11 +371,7 @@ export function StudentShell({
               disabled={closingSession}
               className="flex min-h-12 items-center gap-3 rounded-2xl border border-border px-4 text-sm font-semibold text-muted-foreground"
             >
-              <LogOut
-                aria-hidden="true"
-                className="h-5 w-5"
-              />
-
+              <LogOut aria-hidden="true" className="h-5 w-5" />
               Cerrar sesión
             </button>
           </aside>
