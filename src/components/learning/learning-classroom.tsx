@@ -4,22 +4,20 @@ import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Download,
   Expand,
   FileText,
   GraduationCap,
   Lightbulb,
   ListTree,
+  LoaderCircle,
   LockKeyhole,
   Menu,
-  MessageSquareText,
   Minimize,
   MoreHorizontal,
   NotebookPen,
@@ -31,13 +29,20 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import {
+  useMemo,
+  useState,
+} from "react";
 
+import { LessonNotes } from "@/components/learning/lesson-notes";
+import { ResourceDownloads } from "@/components/learning/resource-downloads";
+import { SlidePlayer } from "@/components/learning/slide-player";
 import type {
   CourseLesson,
   LearningCourse,
   LessonContentType,
 } from "@/data/course-content";
+import { useCourseProgress } from "@/hooks/use-course-progress";
 import { cn } from "@/lib/utils/cn";
 
 interface LearningClassroomProps {
@@ -88,22 +93,81 @@ export function LearningClassroom({
   const initialLesson =
     flatLessons.find(
       ({ lesson }) =>
-        !lesson.completed && !lesson.locked,
+        !lesson.completed &&
+        !lesson.locked,
     ) ??
     flatLessons.find(
       ({ lesson }) => !lesson.locked,
     ) ??
     flatLessons[0];
 
-  const [selectedLessonId, setSelectedLessonId] =
-    useState(initialLesson.lesson.id);
-
-  const [completedLessonIds, setCompletedLessonIds] =
-    useState<string[]>(
-      flatLessons
-        .filter(({ lesson }) => lesson.completed)
-        .map(({ lesson }) => lesson.id),
+  const initialCompletedLessonIds =
+    useMemo(
+      () =>
+        flatLessons
+          .filter(
+            ({ lesson }) =>
+              lesson.completed,
+          )
+          .map(
+            ({ lesson }) => lesson.id,
+          ),
+      [flatLessons],
     );
+
+  const {
+    currentLessonId,
+    completedLessonIds,
+    loading: progressLoading,
+    saving: progressSaving,
+    openLesson,
+    toggleLessonCompleted,
+  } = useCourseProgress({
+    courseId: course.id,
+    initialCurrentLessonId:
+      initialLesson.lesson.id,
+    initialCompletedLessonIds,
+  });
+
+  const currentItem =
+    flatLessons.find(
+      ({ lesson }) =>
+        lesson.id === currentLessonId &&
+        !lesson.locked,
+    ) ?? initialLesson;
+
+  const currentLesson =
+    currentItem.lesson;
+
+  const selectedIndex =
+    flatLessons.findIndex(
+      ({ lesson }) =>
+        lesson.id === currentLesson.id,
+    );
+
+  const previousLesson =
+    selectedIndex > 0
+      ? flatLessons[selectedIndex - 1]
+      : null;
+
+  const nextLesson =
+    selectedIndex <
+    flatLessons.length - 1
+      ? flatLessons[selectedIndex + 1]
+      : null;
+
+  const completedCount =
+    flatLessons.filter(({ lesson }) =>
+      completedLessonIds.includes(
+        lesson.id,
+      ),
+    ).length;
+
+  const progress = Math.round(
+    (completedCount /
+      flatLessons.length) *
+      100,
+  );
 
   const [openUnitIds, setOpenUnitIds] =
     useState<string[]>(
@@ -113,79 +177,59 @@ export function LearningClassroom({
   const [sidebarOpen, setSidebarOpen] =
     useState(true);
 
-  const [mobileSidebarOpen, setMobileSidebarOpen] =
-    useState(false);
+  const [
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
+  ] = useState(false);
 
   const [focusMode, setFocusMode] =
     useState(false);
 
-  const selectedIndex =
-    flatLessons.findIndex(
-      ({ lesson }) =>
-        lesson.id === selectedLessonId,
-    );
-
-  const currentItem =
-    flatLessons[selectedIndex];
-
-  const currentLesson = currentItem.lesson;
   const ContentIcon =
-    contentIcons[currentLesson.contentType];
+    contentIcons[
+      currentLesson.contentType
+    ];
 
-  const completedCount =
-    completedLessonIds.length;
-
-  const progress = Math.round(
-    (completedCount / flatLessons.length) * 100,
-  );
-
-  const previousLesson =
-    selectedIndex > 0
-      ? flatLessons[selectedIndex - 1]
-      : null;
-
-  const nextLesson =
-    selectedIndex < flatLessons.length - 1
-      ? flatLessons[selectedIndex + 1]
-      : null;
-
-  function selectLesson(lesson: CourseLesson) {
+  function selectLesson(
+    lesson: CourseLesson,
+  ) {
     if (lesson.locked) {
       return;
     }
 
-    setSelectedLessonId(lesson.id);
+    void openLesson(lesson.id);
     setMobileSidebarOpen(false);
-  }
-
-  function toggleUnit(unitId: string) {
-    setOpenUnitIds((current) =>
-      current.includes(unitId)
-        ? current.filter(
-            (item) => item !== unitId,
-          )
-        : [...current, unitId],
-    );
-  }
-
-  function toggleCompleted() {
-    setCompletedLessonIds((current) =>
-      current.includes(currentLesson.id)
-        ? current.filter(
-            (id) => id !== currentLesson.id,
-          )
-        : [...current, currentLesson.id],
-    );
   }
 
   function goToLesson(
     item: FlatLesson | null,
   ) {
-    if (!item || item.lesson.locked) {
+    if (
+      !item ||
+      item.lesson.locked
+    ) {
       return;
     }
 
-    setSelectedLessonId(item.lesson.id);
+    void openLesson(
+      item.lesson.id,
+    );
+  }
+
+  function toggleUnit(
+    unitId: string,
+  ) {
+    setOpenUnitIds((current) =>
+      current.includes(unitId)
+        ? current.filter(
+            (item) =>
+              item !== unitId,
+          )
+        : [
+            ...current,
+            unitId,
+          ],
+    );
   }
 
   return (
@@ -201,6 +245,7 @@ export function LearningClassroom({
           <Link
             href="/student/courses"
             className="flex h-11 w-11 items-center justify-center rounded-2xl border border-border bg-card/70 text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground"
+            aria-label="Regresar a las materias"
           >
             <ArrowLeft
               aria-hidden="true"
@@ -220,6 +265,20 @@ export function LearningClassroom({
         </div>
 
         <div className="flex items-center gap-2">
+          {(progressLoading ||
+            progressSaving) && (
+            <div className="hidden items-center gap-2 rounded-2xl border border-border bg-card/70 px-3 py-2 text-xs text-muted-foreground sm:flex">
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin text-primary"
+              />
+
+              {progressLoading
+                ? "Sincronizando"
+                : "Guardando"}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -331,7 +390,8 @@ export function LearningClassroom({
                 <span className="rounded-full border border-border bg-background/70 px-3 py-1.5 font-semibold">
                   {
                     contentLabels[
-                      currentLesson.contentType
+                      currentLesson
+                        .contentType
                     ]
                   }
                 </span>
@@ -350,6 +410,7 @@ export function LearningClassroom({
             </div>
 
             <LessonViewer
+              key={currentLesson.id}
               lesson={currentLesson}
               course={course}
             />
@@ -357,9 +418,14 @@ export function LearningClassroom({
             <div className="flex flex-col gap-4 border-t border-border px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <button
                 type="button"
-                onClick={toggleCompleted}
+                disabled={progressSaving}
+                onClick={() => {
+                  void toggleLessonCompleted(
+                    currentLesson.id,
+                  );
+                }}
                 className={cn(
-                  "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition-all",
+                  "inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60",
                   completedLessonIds.includes(
                     currentLesson.id,
                   )
@@ -395,10 +461,13 @@ export function LearningClassroom({
                   type="button"
                   disabled={
                     !previousLesson ||
-                    previousLesson.lesson.locked
+                    previousLesson.lesson
+                      .locked
                   }
                   onClick={() => {
-                    goToLesson(previousLesson);
+                    goToLesson(
+                      previousLesson,
+                    );
                   }}
                   className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-background/60 px-4 text-sm font-semibold text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 sm:flex-none"
                 >
@@ -432,7 +501,7 @@ export function LearningClassroom({
             </div>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[1fr_0.72fr]">
+          <section className="grid gap-5 xl:grid-cols-[1fr_0.82fr]">
             <article className="rounded-[1.8rem] border border-border bg-card/75 p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
@@ -465,59 +534,30 @@ export function LearningClassroom({
                   />
 
                   <p className="text-sm leading-6 text-secondary-foreground/80">
-                    Toma notas durante la clase y
-                    revisa los recursos antes de
-                    avanzar a la siguiente lección.
+                    Registra conceptos,
+                    preguntas y ejemplos en
+                    tus notas antes de avanzar.
                   </p>
                 </div>
               </div>
             </article>
 
-            <article className="rounded-[1.8rem] border border-border bg-card/75 p-5 shadow-sm sm:p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                    Materiales
-                  </p>
-
-                  <h3 className="mt-1 text-lg font-semibold">
-                    Recursos de apoyo
-                  </h3>
-                </div>
-
-                <Download
-                  aria-hidden="true"
-                  className="h-5 w-5 text-muted-foreground"
-                />
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {currentLesson.resources.map(
-                  (resource) => (
-                    <button
-                      key={resource}
-                      type="button"
-                      className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-border bg-background/60 px-4 text-left text-sm font-medium transition-all hover:border-primary/30"
-                    >
-                      <FileText
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0 text-primary"
-                      />
-
-                      <span className="flex-1">
-                        {resource}
-                      </span>
-
-                      <Download
-                        aria-hidden="true"
-                        className="h-4 w-4 text-muted-foreground"
-                      />
-                    </button>
-                  ),
-                )}
-              </div>
-            </article>
+            <ResourceDownloads
+              courseTitle={course.title}
+              lessonTitle={
+                currentLesson.title
+              }
+              resources={
+                currentLesson.resources
+              }
+            />
           </section>
+
+          <LessonNotes
+            key={`${course.id}-${currentLesson.id}`}
+            courseId={course.id}
+            lessonId={currentLesson.id}
+          />
 
           <section className="rounded-[1.8rem] border border-primary/15 bg-secondary p-5 sm:p-6">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -531,13 +571,16 @@ export function LearningClassroom({
 
                 <div>
                   <h3 className="text-base font-semibold text-secondary-foreground">
-                    ¿Necesitas reforzar este tema?
+                    ¿Necesitas reforzar
+                    este tema?
                   </h3>
 
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary-foreground/70">
-                    Usa el playground para recibir
-                    explicaciones, practicar y solicitar
-                    pistas relacionadas con esta clase.
+                    Usa el playground para
+                    recibir explicaciones,
+                    practicar y solicitar
+                    pistas relacionadas con
+                    esta clase.
                   </p>
                 </div>
               </div>
@@ -561,13 +604,18 @@ export function LearningClassroom({
           <aside className="sticky top-24 hidden h-[calc(100vh-8rem)] overflow-hidden rounded-[2rem] border border-border bg-card/80 shadow-sm backdrop-blur-xl lg:flex lg:flex-col">
             <CourseContentSidebar
               course={course}
-              currentLessonId={currentLesson.id}
+              currentLessonId={
+                currentLesson.id
+              }
               completedLessonIds={
                 completedLessonIds
               }
               openUnitIds={openUnitIds}
               progress={progress}
-              onSelectLesson={selectLesson}
+              loading={progressLoading}
+              onSelectLesson={
+                selectLesson
+              }
               onToggleUnit={toggleUnit}
             />
           </aside>
@@ -580,7 +628,9 @@ export function LearningClassroom({
             type="button"
             aria-label="Cerrar contenido"
             onClick={() => {
-              setMobileSidebarOpen(false);
+              setMobileSidebarOpen(
+                false,
+              );
             }}
             className="absolute inset-0 bg-black/55 backdrop-blur-sm"
           />
@@ -601,9 +651,12 @@ export function LearningClassroom({
               <button
                 type="button"
                 onClick={() => {
-                  setMobileSidebarOpen(false);
+                  setMobileSidebarOpen(
+                    false,
+                  );
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border"
+                aria-label="Cerrar panel"
               >
                 <X
                   aria-hidden="true"
@@ -614,13 +667,18 @@ export function LearningClassroom({
 
             <CourseContentSidebar
               course={course}
-              currentLessonId={currentLesson.id}
+              currentLessonId={
+                currentLesson.id
+              }
               completedLessonIds={
                 completedLessonIds
               }
               openUnitIds={openUnitIds}
               progress={progress}
-              onSelectLesson={selectLesson}
+              loading={progressLoading}
+              onSelectLesson={
+                selectLesson
+              }
               onToggleUnit={toggleUnit}
             />
           </aside>
@@ -636,10 +694,13 @@ interface CourseContentSidebarProps {
   completedLessonIds: string[];
   openUnitIds: string[];
   progress: number;
+  loading: boolean;
   onSelectLesson: (
     lesson: CourseLesson,
   ) => void;
-  onToggleUnit: (unitId: string) => void;
+  onToggleUnit: (
+    unitId: string,
+  ) => void;
 }
 
 function CourseContentSidebar({
@@ -648,6 +709,7 @@ function CourseContentSidebar({
   completedLessonIds,
   openUnitIds,
   progress,
+  loading,
   onSelectLesson,
   onToggleUnit,
 }: CourseContentSidebarProps) {
@@ -666,10 +728,17 @@ function CourseContentSidebar({
           </div>
 
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
-            <ListTree
-              aria-hidden="true"
-              className="h-5 w-5"
-            />
+            {loading ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-5 w-5 animate-spin"
+              />
+            ) : (
+              <ListTree
+                aria-hidden="true"
+                className="h-5 w-5"
+              />
+            )}
           </div>
         </div>
 
@@ -685,7 +754,7 @@ function CourseContentSidebar({
 
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-[#756fff]"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-[#756fff] transition-all duration-500"
             style={{
               width: `${progress}%`,
             }}
@@ -698,13 +767,16 @@ function CourseContentSidebar({
           {course.units.map(
             (unit, unitIndex) => {
               const open =
-                openUnitIds.includes(unit.id);
+                openUnitIds.includes(
+                  unit.id,
+                );
 
               const completedInUnit =
-                unit.lessons.filter((lesson) =>
-                  completedLessonIds.includes(
-                    lesson.id,
-                  ),
+                unit.lessons.filter(
+                  (lesson) =>
+                    completedLessonIds.includes(
+                      lesson.id,
+                    ),
                 ).length;
 
               return (
@@ -715,7 +787,9 @@ function CourseContentSidebar({
                   <button
                     type="button"
                     onClick={() => {
-                      onToggleUnit(unit.id);
+                      onToggleUnit(
+                        unit.id,
+                      );
                     }}
                     className="flex w-full items-center gap-3 p-4 text-left"
                   >
@@ -730,7 +804,11 @@ function CourseContentSidebar({
 
                       <p className="mt-1 text-[0.68rem] text-muted-foreground">
                         {completedInUnit} de{" "}
-                        {unit.lessons.length} completadas
+                        {
+                          unit.lessons
+                            .length
+                        }{" "}
+                        completadas
                       </p>
                     </div>
 
@@ -738,7 +816,8 @@ function CourseContentSidebar({
                       aria-hidden="true"
                       className={cn(
                         "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                        open && "rotate-180",
+                        open &&
+                          "rotate-180",
                       )}
                     />
                   </button>
@@ -752,7 +831,8 @@ function CourseContentSidebar({
                         ) => {
                           const Icon =
                             contentIcons[
-                              lesson.contentType
+                              lesson
+                                .contentType
                             ];
 
                           const active =
@@ -766,9 +846,13 @@ function CourseContentSidebar({
 
                           return (
                             <button
-                              key={lesson.id}
+                              key={
+                                lesson.id
+                              }
                               type="button"
-                              disabled={lesson.locked}
+                              disabled={
+                                lesson.locked
+                              }
                               onClick={() => {
                                 onSelectLesson(
                                   lesson,
@@ -804,13 +888,16 @@ function CourseContentSidebar({
                                     className="h-3.5 w-3.5"
                                   />
                                 ) : (
-                                  lessonIndex + 1
+                                  lessonIndex +
+                                  1
                                 )}
                               </div>
 
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-2 text-xs font-semibold leading-5">
-                                  {lesson.title}
+                                  {
+                                    lesson.title
+                                  }
                                 </p>
 
                                 <div
@@ -870,93 +957,19 @@ function LessonViewer({
   course,
 }: LessonViewerProps) {
   if (
-    lesson.contentType === "slides" &&
-    lesson.slide
+    lesson.contentType === "slides"
   ) {
     return (
-      <div className="relative flex min-h-[31rem] items-center justify-center overflow-hidden bg-[#06171e] p-5 text-white sm:p-8 lg:min-h-[38rem]">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(44,221,198,0.22),transparent_30%),radial-gradient(circle_at_85%_85%,rgba(112,101,255,0.22),transparent_34%)]"
-        />
-
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:48px_48px]"
-        />
-
-        <div className="relative z-10 w-full max-w-4xl rounded-[2rem] border border-white/10 bg-white/[0.055] p-6 shadow-2xl backdrop-blur-2xl sm:p-9 lg:p-12">
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5ce6d4]">
-              {lesson.slide.eyebrow}
-            </p>
-
-            <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs text-white/55">
-              {lesson.slide.number} /{" "}
-              {lesson.slide.total}
-            </span>
-          </div>
-
-          <h3 className="mt-8 max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl lg:text-5xl">
-            {lesson.slide.title}
-          </h3>
-
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-white/60 sm:text-base">
-            {lesson.slide.body}
-          </p>
-
-          <div className="mt-8 grid gap-3">
-            {lesson.slide.points.map(
-              (point, index) => (
-                <div
-                  key={point}
-                  className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#35ddc7] text-xs font-bold text-[#04231f]">
-                    {index + 1}
-                  </div>
-
-                  <p className="pt-1 text-sm leading-6 text-white/75">
-                    {point}
-                  </p>
-                </div>
-              ),
-            )}
-          </div>
-
-          <div className="mt-9 flex items-center justify-between border-t border-white/10 pt-5">
-            <span className="text-xs text-white/35">
-              {course.title}
-            </span>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05]"
-              >
-                <ChevronLeft
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                />
-              </button>
-
-              <button
-                type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#35ddc7] text-[#04231f]"
-              >
-                <ChevronRight
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SlidePlayer
+        lesson={lesson}
+        courseTitle={course.title}
+      />
     );
   }
 
-  if (lesson.contentType === "video") {
+  if (
+    lesson.contentType === "video"
+  ) {
     return (
       <div className="relative flex min-h-[31rem] items-center justify-center overflow-hidden bg-[#041116] p-6 text-white lg:min-h-[38rem]">
         <div
@@ -993,14 +1006,19 @@ function LessonViewer({
 
           <div className="mt-3 flex w-full items-center justify-between text-xs text-white/40">
             <span>04:18</span>
-            <span>{lesson.duration}</span>
+            <span>
+              {lesson.duration}
+            </span>
           </div>
         </div>
       </div>
     );
   }
 
-  if (lesson.contentType === "document") {
+  if (
+    lesson.contentType ===
+    "document"
+  ) {
     return (
       <div className="flex min-h-[31rem] items-center justify-center bg-muted/35 p-5 lg:min-h-[38rem]">
         <div className="w-full max-w-3xl rounded-[1.5rem] border border-border bg-white p-7 text-[#17202b] shadow-2xl sm:p-10 lg:p-12">
@@ -1047,10 +1065,9 @@ function LessonViewer({
 
           <div className="mt-8 rounded-xl border-l-4 border-[#22b8aa] bg-[#eef9f7] p-4">
             <p className="text-sm leading-6 text-[#315b57]">
-              Lee el documento completo y registra
-              los conceptos que consideres más
-              importantes para la discusión de la
-              clase.
+              Lee el documento completo y
+              registra los conceptos más
+              importantes en tus notas.
             </p>
           </div>
         </div>
@@ -1093,9 +1110,9 @@ function LessonViewer({
           </p>
 
           <p className="mt-3 text-sm leading-7 text-white/75">
-            Analiza el planteamiento, desarrolla tu
-            solución y adjunta la evidencia solicitada.
-            Podrás revisar la rúbrica antes de entregar.
+            Analiza el planteamiento,
+            desarrolla tu solución y
+            adjunta la evidencia solicitada.
           </p>
         </div>
 
