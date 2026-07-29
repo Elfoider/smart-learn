@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
 
-import { RoleWelcome } from "@/components/auth/role-welcome";
+import { StudentDashboard } from "@/components/student/student-dashboard";
 
 export const metadata: Metadata = {
-  title: "Portal estudiantil",
+  title: "Mi salón",
+  description:
+    "Portal estudiantil y salón virtual de Smart Learn.",
 };
 
 export default function StudentPage() {
-  return (
-    <RoleWelcome
-      role="student"
-      title="Tu salón virtual está preparado."
-      description="En el próximo sprint construiremos la experiencia estudiantil con materias, progreso, próximas clases, actividades pendientes y acceso al aula."
-    />
-  );
+  return <StudentDashboard />;
 }

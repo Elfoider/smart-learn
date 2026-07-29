@@ -1,4 +1,5 @@
 import { RoleGuard } from "@/components/auth/role-guard";
+import { StudentShell } from "@/components/student/student-shell";
 
 interface StudentLayoutProps {
   children: React.ReactNode;
@@ -9,7 +10,9 @@ export default function StudentLayout({
 }: StudentLayoutProps) {
   return (
     <RoleGuard allowedRole="student">
-      {children}
+      <StudentShell>
+        {children}
+      </StudentShell>
     </RoleGuard>
   );
 }
