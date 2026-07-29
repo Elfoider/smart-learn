@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { BookOpen } from "lucide-react";
 
-import { StudentPlaceholder } from "@/components/student/student-placeholder";
+import { CourseCatalog } from "@/components/student/course-catalog";
 
 export const metadata: Metadata = {
   title: "Mis materias",
+  description:
+    "Materias y aulas virtuales del estudiante.",
 };
 
 export default function StudentCoursesPage() {
-  return (
-    <StudentPlaceholder
-      eyebrow="Próxima entrega"
-      title="Tus aulas estarán organizadas en un solo lugar."
-      description="En el siguiente bloque construiremos el listado completo de materias y la experiencia de aula tipo Mastermind, con contenido central, capítulos, lecciones y progreso."
-      icon={BookOpen}
-    />
-  );
+  return <CourseCatalog />;
 }
