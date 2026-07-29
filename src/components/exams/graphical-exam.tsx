@@ -8,9 +8,9 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Circle,
   ClipboardCheck,
-  Clock3,
+  Cloud,
+  CloudCheck,
   Flag,
   LayoutGrid,
   LoaderCircle,
@@ -24,11 +24,6 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
 import { toast } from "sonner";
 
 import type {
@@ -37,125 +32,19 @@ import type {
   ExamQuestion,
   StudentExam,
 } from "@/data/exams";
+import { useExamAttempt } from "@/hooks/use-exam-attempt";
+import {
+  examAnswersMatch,
+  isExamQuestionAnswered,
+} from "@/lib/exams/exam-scoring";
 import { cn } from "@/lib/utils/cn";
+import type {
+  ExamAttemptRecord,
+  ExamResult,
+} from "@/types/exam-attempt";
 
 interface GraphicalExamProps {
   exam: StudentExam;
-}
-
-type ExamPhase =
-  | "introduction"
-  | "active"
-  | "submitted";
-
-interface ExamResult {
-  score: number;
-  earnedPoints: number;
-  totalPoints: number;
-  correctAnswers: number;
-  answeredQuestions: number;
-  passed: boolean;
-}
-
-function answersMatch(
-  received: ExamAnswer | undefined,
-  expected: ExamAnswer,
-) {
-  if (
-    Array.isArray(received) &&
-    Array.isArray(expected)
-  ) {
-    return (
-      received.length ===
-        expected.length &&
-      received.every(
-        (value, index) =>
-          value === expected[index],
-      )
-    );
-  }
-
-  return received === expected;
-}
-
-function calculateResult(
-  exam: StudentExam,
-  answers: Record<
-    string,
-    ExamAnswer
-  >,
-): ExamResult {
-  const totalPoints =
-    exam.questions.reduce(
-      (total, question) =>
-        total + question.points,
-      0,
-    );
-
-  let earnedPoints = 0;
-  let correctAnswers = 0;
-  let answeredQuestions = 0;
-
-  exam.questions.forEach(
-    (question) => {
-      const answer =
-        answers[question.id];
-
-      const answered =
-        typeof answer === "string"
-          ? answer.trim().length > 0
-          : Array.isArray(answer) &&
-            answer.length > 0;
-
-      if (answered) {
-        answeredQuestions += 1;
-      }
-
-      if (
-        answersMatch(
-          answer,
-          question.correctAnswer,
-        )
-      ) {
-        earnedPoints +=
-          question.points;
-
-        correctAnswers += 1;
-      }
-    },
-  );
-
-  const score =
-    totalPoints > 0
-      ? Math.round(
-          (earnedPoints /
-            totalPoints) *
-            100,
-        )
-      : 0;
-
-  return {
-    score,
-    earnedPoints,
-    totalPoints,
-    correctAnswers,
-    answeredQuestions,
-    passed:
-      score >= exam.passingScore,
-  };
-}
-
-function isQuestionAnswered(
-  answer: ExamAnswer | undefined,
-) {
-  if (typeof answer === "string") {
-    return answer.trim().length > 0;
-  }
-
-  return (
-    Array.isArray(answer) &&
-    answer.length > 0
-  );
 }
 
 function formatTime(
@@ -178,50 +67,84 @@ function formatTime(
 export function GraphicalExam({
   exam,
 }: GraphicalExamProps) {
-  const [phase, setPhase] =
-    useState<ExamPhase>(
-      "introduction",
+  const {
+    attempt,
+    progress,
+    loading,
+    saving,
+    starting,
+    submitting,
+    attemptsUsed,
+    attemptsRemaining,
+    startAttempt,
+    updateAnswer,
+    setQuestionIndex,
+    toggleFlag,
+    submitAttempt,
+  } = useExamAttempt(exam);
+
+  if (loading) {
+    return <ExamLoadingScreen />;
+  }
+
+  if (!attempt) {
+    return (
+      <ExamIntroduction
+        exam={exam}
+        attemptsUsed={attemptsUsed}
+        attemptsRemaining={
+          attemptsRemaining
+        }
+        starting={starting}
+        onStart={() => {
+          void startAttempt();
+        }}
+      />
     );
+  }
 
-  const [currentIndex, setCurrentIndex] =
-    useState(0);
-
-  const [answers, setAnswers] =
-    useState<
-      Record<string, ExamAnswer>
-    >({});
-
-  const [flaggedIds, setFlaggedIds] =
-    useState<string[]>([]);
-
-  const [remainingSeconds, setRemainingSeconds] =
-    useState(
-      exam.durationMinutes * 60,
+  if (
+    attempt.status === "submitted" &&
+    attempt.result
+  ) {
+    return (
+      <ExamResultScreen
+        exam={exam}
+        attempt={attempt}
+        result={attempt.result}
+        bestScore={
+          progress?.bestScore ?? null
+        }
+        attemptsRemaining={
+          attemptsRemaining
+        }
+        starting={starting}
+        onRetry={() => {
+          void startAttempt();
+        }}
+      />
     );
+  }
 
-  const [result, setResult] =
-    useState<ExamResult | null>(
-      null,
-    );
-
-  const [submitting, setSubmitting] =
-    useState(false);
-
-  const answersRef = useRef(answers);
-  answersRef.current = answers;
+  const currentIndex = Math.max(
+    0,
+    Math.min(
+      attempt.currentQuestionIndex,
+      exam.questions.length - 1,
+    ),
+  );
 
   const currentQuestion =
     exam.questions[currentIndex];
 
   const answeredCount =
-    exam.questions.filter(
-      (question) =>
-        isQuestionAnswered(
-          answers[question.id],
-        ),
+    exam.questions.filter((question) =>
+      isExamQuestionAnswered(
+        attempt.answers[question.id],
+      ),
     ).length;
 
-  const progress =
+  const progressPercentage =
     exam.questions.length > 0
       ? Math.round(
           (answeredCount /
@@ -230,101 +153,7 @@ export function GraphicalExam({
         )
       : 0;
 
-  useEffect(() => {
-    if (phase !== "active") {
-      return;
-    }
-
-    const interval =
-      window.setInterval(() => {
-        setRemainingSeconds(
-          (current) => {
-            if (current <= 1) {
-              window.clearInterval(
-                interval,
-              );
-
-              const automaticResult =
-                calculateResult(
-                  exam,
-                  answersRef.current,
-                );
-
-              setResult(
-                automaticResult,
-              );
-
-              setPhase(
-                "submitted",
-              );
-
-              toast.info(
-                "El tiempo finalizó",
-                {
-                  description:
-                    "La evaluación fue entregada automáticamente.",
-                },
-              );
-
-              return 0;
-            }
-
-            return current - 1;
-          },
-        );
-      }, 1000);
-
-    return () => {
-      window.clearInterval(
-        interval,
-      );
-    };
-  }, [exam, phase]);
-
-  function startExam() {
-    setAnswers({});
-    setFlaggedIds([]);
-    setCurrentIndex(0);
-    setRemainingSeconds(
-      exam.durationMinutes * 60,
-    );
-    setResult(null);
-    setPhase("active");
-  }
-
-  function updateAnswer(
-    questionId: string,
-    answer: ExamAnswer,
-  ) {
-    setAnswers((current) => ({
-      ...current,
-      [questionId]: answer,
-    }));
-  }
-
-  function toggleFlag(
-    questionId: string,
-  ) {
-    setFlaggedIds((current) =>
-      current.includes(questionId)
-        ? current.filter(
-            (id) =>
-              id !== questionId,
-          )
-        : [
-            ...current,
-            questionId,
-          ],
-    );
-  }
-
-  function selectQuestion(
-    index: number,
-  ) {
-    setCurrentIndex(index);
-  }
-
-  function submitExam() {
+  function handleSubmit() {
     const unanswered =
       exam.questions.length -
       answeredCount;
@@ -340,44 +169,7 @@ export function GraphicalExam({
       }
     }
 
-    setSubmitting(true);
-
-    window.setTimeout(() => {
-      const nextResult =
-        calculateResult(
-          exam,
-          answersRef.current,
-        );
-
-      setResult(nextResult);
-      setPhase("submitted");
-      setSubmitting(false);
-    }, 550);
-  }
-
-  if (
-    phase === "introduction"
-  ) {
-    return (
-      <ExamIntroduction
-        exam={exam}
-        onStart={startExam}
-      />
-    );
-  }
-
-  if (
-    phase === "submitted" &&
-    result
-  ) {
-    return (
-      <ExamResultScreen
-        exam={exam}
-        result={result}
-        answers={answers}
-        onRetry={startExam}
-      />
-    );
+    void submitAttempt("manual");
   }
 
   return (
@@ -386,7 +178,7 @@ export function GraphicalExam({
         <div className="flex flex-wrap items-center gap-4 px-4 py-4 sm:px-5">
           <Link
             href="/student/exams"
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground"
             aria-label="Salir de la evaluación"
           >
             <ArrowLeft
@@ -397,7 +189,8 @@ export function GraphicalExam({
 
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-primary">
-              {exam.courseCode}
+              {exam.courseCode} · Intento{" "}
+              {attempt.attemptNumber}
             </p>
 
             <h1 className="mt-1 truncate text-sm font-semibold sm:text-base">
@@ -405,10 +198,32 @@ export function GraphicalExam({
             </h1>
           </div>
 
+          <div className="hidden items-center gap-2 rounded-2xl border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground sm:flex">
+            {saving ? (
+              <>
+                <Cloud
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-pulse text-primary"
+                />
+
+                Guardando
+              </>
+            ) : (
+              <>
+                <CloudCheck
+                  aria-hidden="true"
+                  className="h-4 w-4 text-primary"
+                />
+
+                Guardado
+              </>
+            )}
+          </div>
+
           <div
             className={cn(
               "flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-bold",
-              remainingSeconds <= 60
+              attempt.remainingSeconds <= 60
                 ? "border-danger/30 bg-danger/10 text-danger"
                 : "border-primary/20 bg-secondary text-secondary-foreground",
             )}
@@ -419,13 +234,14 @@ export function GraphicalExam({
             />
 
             {formatTime(
-              remainingSeconds,
+              attempt.remainingSeconds,
             )}
           </div>
 
-          <div className="hidden min-w-40 sm:block">
+          <div className="hidden min-w-40 md:block">
             <div className="flex items-center justify-between text-[0.68rem] text-muted-foreground">
               <span>Respondidas</span>
+
               <span>
                 {answeredCount}/
                 {exam.questions.length}
@@ -436,7 +252,7 @@ export function GraphicalExam({
               <div
                 className="h-full rounded-full bg-gradient-to-r from-primary to-[#756fff] transition-all duration-500"
                 style={{
-                  width: `${progress}%`,
+                  width: `${progressPercentage}%`,
                 }}
               />
             </div>
@@ -457,17 +273,13 @@ export function GraphicalExam({
                   </span>
 
                   <span className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-[0.68rem] font-semibold text-muted-foreground">
-                    {
-                      currentQuestion.points
-                    }{" "}
+                    {currentQuestion.points}{" "}
                     puntos
                   </span>
                 </div>
 
                 <h2 className="mt-4 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
-                  {
-                    currentQuestion.title
-                  }
+                  {currentQuestion.title}
                 </h2>
               </div>
 
@@ -480,7 +292,7 @@ export function GraphicalExam({
                 }}
                 className={cn(
                   "flex min-h-11 items-center gap-2 rounded-2xl border px-4 text-xs font-semibold transition-all",
-                  flaggedIds.includes(
+                  attempt.flaggedQuestionIds.includes(
                     currentQuestion.id,
                   )
                     ? "border-[#e0ae43]/30 bg-[#fff3cf] text-[#765008] dark:bg-[#443215] dark:text-[#ffda8d]"
@@ -491,14 +303,13 @@ export function GraphicalExam({
                   aria-hidden="true"
                   className={cn(
                     "h-4 w-4",
-                    flaggedIds.includes(
+                    attempt.flaggedQuestionIds.includes(
                       currentQuestion.id,
-                    ) &&
-                      "fill-current",
+                    ) && "fill-current",
                   )}
                 />
 
-                {flaggedIds.includes(
+                {attempt.flaggedQuestionIds.includes(
                   currentQuestion.id,
                 )
                   ? "Marcada"
@@ -520,9 +331,7 @@ export function GraphicalExam({
                 </p>
 
                 <p className="mt-4 max-w-4xl text-lg font-medium leading-8 sm:text-xl">
-                  {
-                    currentQuestion.prompt
-                  }
+                  {currentQuestion.prompt}
                 </p>
 
                 <div className="mt-5 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm text-white/60">
@@ -531,9 +340,7 @@ export function GraphicalExam({
                     className="mt-0.5 h-4 w-4 shrink-0 text-[#62ead8]"
                   />
 
-                  {
-                    currentQuestion.instruction
-                  }
+                  {currentQuestion.instruction}
                 </div>
               </div>
             </div>
@@ -542,7 +349,7 @@ export function GraphicalExam({
               <QuestionInput
                 question={currentQuestion}
                 answer={
-                  answers[
+                  attempt.answers[
                     currentQuestion.id
                   ]
                 }
@@ -561,12 +368,8 @@ export function GraphicalExam({
               type="button"
               disabled={currentIndex === 0}
               onClick={() => {
-                setCurrentIndex(
-                  (current) =>
-                    Math.max(
-                      current - 1,
-                      0,
-                    ),
+                setQuestionIndex(
+                  currentIndex - 1,
                 );
               }}
               className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background/60 px-5 text-sm font-semibold text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
@@ -580,18 +383,12 @@ export function GraphicalExam({
             </button>
 
             {currentIndex <
-            exam.questions.length -
-              1 ? (
+            exam.questions.length - 1 ? (
               <button
                 type="button"
                 onClick={() => {
-                  setCurrentIndex(
-                    (current) =>
-                      Math.min(
-                        current + 1,
-                        exam.questions
-                          .length - 1,
-                      ),
+                  setQuestionIndex(
+                    currentIndex + 1,
                   );
                 }}
                 className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5"
@@ -607,7 +404,7 @@ export function GraphicalExam({
               <button
                 type="button"
                 disabled={submitting}
-                onClick={submitExam}
+                onClick={handleSubmit}
                 className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
               >
                 {submitting ? (
@@ -653,18 +450,17 @@ export function GraphicalExam({
               {exam.questions.map(
                 (question, index) => {
                   const active =
-                    index ===
-                    currentIndex;
+                    index === currentIndex;
 
                   const answered =
-                    isQuestionAnswered(
-                      answers[
+                    isExamQuestionAnswered(
+                      attempt.answers[
                         question.id
                       ],
                     );
 
                   const flagged =
-                    flaggedIds.includes(
+                    attempt.flaggedQuestionIds.includes(
                       question.id,
                     );
 
@@ -673,9 +469,7 @@ export function GraphicalExam({
                       key={question.id}
                       type="button"
                       onClick={() => {
-                        selectQuestion(
-                          index,
-                        );
+                        setQuestionIndex(index);
                       }}
                       className={cn(
                         "relative flex aspect-square items-center justify-center rounded-xl border text-xs font-bold transition-all",
@@ -686,8 +480,7 @@ export function GraphicalExam({
                             : "border-border bg-background/60 text-muted-foreground hover:border-primary/30",
                       )}
                     >
-                      {answered &&
-                      !active ? (
+                      {answered && !active ? (
                         <Check
                           aria-hidden="true"
                           className="h-4 w-4"
@@ -710,21 +503,25 @@ export function GraphicalExam({
               )}
             </div>
 
-            <div className="mt-5 space-y-2 text-[0.68rem] text-muted-foreground">
-              <LegendItem
-                surface="bg-primary"
-                label="Pregunta actual"
-              />
+            <div className="mt-5 rounded-2xl border border-border bg-background/60 p-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">
+                  Progreso
+                </span>
 
-              <LegendItem
-                surface="bg-secondary border border-primary/20"
-                label="Respondida"
-              />
+                <span className="font-semibold text-primary">
+                  {progressPercentage}%
+                </span>
+              </div>
 
-              <LegendItem
-                surface="bg-background border border-border"
-                label="Sin responder"
-              />
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-[#756fff]"
+                  style={{
+                    width: `${progressPercentage}%`,
+                  }}
+                />
+              </div>
             </div>
           </section>
 
@@ -737,15 +534,14 @@ export function GraphicalExam({
 
               <div>
                 <h3 className="text-sm font-semibold text-secondary-foreground">
-                  Guardado del prototipo
+                  Recuperación automática
                 </h3>
 
                 <p className="mt-2 text-xs leading-6 text-secondary-foreground/70">
-                  En este bloque las
-                  respuestas se conservan
-                  mientras permanezcas en la
-                  pantalla. En el próximo se
-                  sincronizarán con Firestore.
+                  Puedes cerrar o actualizar la
+                  página. Tus respuestas, tiempo y
+                  pregunta actual se recuperarán
+                  desde Firestore.
                 </p>
               </div>
             </div>
@@ -754,13 +550,20 @@ export function GraphicalExam({
           <button
             type="button"
             disabled={submitting}
-            onClick={submitExam}
+            onClick={handleSubmit}
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-60"
           >
-            <Send
-              aria-hidden="true"
-              className="h-4 w-4"
-            />
+            {submitting ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-4 w-4 animate-spin"
+              />
+            ) : (
+              <Send
+                aria-hidden="true"
+                className="h-4 w-4"
+              />
+            )}
 
             Entregar evaluación
           </button>
@@ -789,8 +592,7 @@ function QuestionInput({
     return (
       <OrderingQuestion
         items={
-          question.orderingItems ??
-          []
+          question.orderingItems ?? []
         }
         answer={
           Array.isArray(answer)
@@ -810,8 +612,7 @@ function QuestionInput({
     <div
       className={cn(
         "grid gap-3",
-        visual &&
-          "md:grid-cols-3",
+        visual && "md:grid-cols-3",
       )}
     >
       {question.options?.map(
@@ -858,9 +659,7 @@ function QuestionInput({
 
                 {option.description && (
                   <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                    {
-                      option.description
-                    }
+                    {option.description}
                   </p>
                 )}
               </div>
@@ -899,20 +698,18 @@ function OrderingQuestion({
   answer,
   onChange,
 }: OrderingQuestionProps) {
-  const selectedItems =
-    answer
-      .map((id) =>
-        items.find(
-          (item) =>
-            item.id === id,
-        ),
-      )
-      .filter(
-        (
-          item,
-        ): item is ExamOption =>
-          Boolean(item),
-      );
+  const selectedItems = answer
+    .map((id) =>
+      items.find(
+        (item) => item.id === id,
+      ),
+    )
+    .filter(
+      (
+        item,
+      ): item is ExamOption =>
+        Boolean(item),
+    );
 
   const availableItems =
     items.filter(
@@ -954,9 +751,7 @@ function OrderingQuestion({
                   key={item.id}
                   type="button"
                   onClick={() => {
-                    removeItem(
-                      item.id,
-                    );
+                    removeItem(item.id);
                   }}
                   className="flex min-h-14 items-center gap-4 rounded-2xl border border-primary/20 bg-background/65 p-3 text-left"
                 >
@@ -1016,9 +811,7 @@ function OrderingQuestion({
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {
-                      item.description
-                    }
+                    {item.description}
                   </p>
                 </div>
               </button>
@@ -1032,13 +825,22 @@ function OrderingQuestion({
 
 interface ExamIntroductionProps {
   exam: StudentExam;
+  attemptsUsed: number;
+  attemptsRemaining: number;
+  starting: boolean;
   onStart: () => void;
 }
 
 function ExamIntroduction({
   exam,
+  attemptsUsed,
+  attemptsRemaining,
+  starting,
   onStart,
 }: ExamIntroductionProps) {
+  const canStart =
+    attemptsRemaining > 0;
+
   return (
     <section className="relative overflow-hidden rounded-[2rem] bg-[#071a22] p-6 text-white shadow-2xl sm:p-8 lg:p-10">
       <div
@@ -1046,15 +848,10 @@ function ExamIntroduction({
         className="absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(45,222,199,0.25),transparent_34%),radial-gradient(circle_at_88%_88%,rgba(117,104,255,0.25),transparent_36%)]"
       />
 
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:48px_48px]"
-      />
-
       <div className="relative z-10 mx-auto max-w-5xl">
         <Link
           href="/student/exams"
-          className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-xs font-semibold text-white/70 backdrop-blur-xl"
+          className="inline-flex min-h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-xs font-semibold text-white/70"
         >
           <ArrowLeft
             aria-hidden="true"
@@ -1083,20 +880,20 @@ function ExamIntroduction({
               {exam.description}
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
-              <IntroBadge
-                icon={Clock3}
-                text={`${exam.durationMinutes} minutos`}
+            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+              <IntroMetric
+                value={`${exam.durationMinutes} min`}
+                label="Duración"
               />
 
-              <IntroBadge
-                icon={Target}
-                text={`${exam.questions.length} preguntas`}
+              <IntroMetric
+                value={`${exam.questions.length}`}
+                label="Preguntas"
               />
 
-              <IntroBadge
-                icon={Award}
-                text={`Aprobación: ${exam.passingScore}%`}
+              <IntroMetric
+                value={`${attemptsUsed}/${exam.attemptsAllowed}`}
+                label="Intentos usados"
               />
             </div>
           </div>
@@ -1110,45 +907,68 @@ function ExamIntroduction({
             </div>
 
             <h2 className="mt-6 text-xl font-semibold">
-              Antes de comenzar
+              Evaluación persistente
             </h2>
 
             <div className="mt-5 space-y-3">
               {[
-                "El temporizador comienza al presionar el botón.",
-                "Puedes navegar libremente entre las preguntas.",
-                "Marca preguntas para revisarlas antes de entregar.",
-                "Al terminar el tiempo, la evaluación se entrega automáticamente.",
-              ].map(
-                (instruction) => (
-                  <div
-                    key={instruction}
-                    className="flex gap-3 rounded-2xl border border-white/10 bg-black/10 p-3"
-                  >
-                    <CheckCircle2
-                      aria-hidden="true"
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[#59e4d2]"
-                    />
+                "Las respuestas se guardarán automáticamente.",
+                "El temporizador se recuperará al recargar.",
+                "La calificación será calculada en el servidor.",
+                "Cada inicio consume uno de los intentos permitidos.",
+              ].map((instruction) => (
+                <div
+                  key={instruction}
+                  className="flex gap-3 rounded-2xl border border-white/10 bg-black/10 p-3"
+                >
+                  <CheckCircle2
+                    aria-hidden="true"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[#59e4d2]"
+                  />
 
-                    <p className="text-xs leading-6 text-white/65">
-                      {instruction}
-                    </p>
-                  </div>
-                ),
-              )}
+                  <p className="text-xs leading-6 text-white/65">
+                    {instruction}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <button
               type="button"
+              disabled={
+                starting || !canStart
+              }
               onClick={onStart}
-              className="mt-6 flex min-h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[#59e4d2] px-5 text-sm font-bold text-[#05231f] shadow-xl shadow-[#59e4d2]/20 transition-all hover:-translate-y-0.5"
+              className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#59e4d2] px-5 text-sm font-bold text-[#05231f] shadow-xl shadow-[#59e4d2]/20 transition-all hover:-translate-y-0.5 disabled:pointer-events-none disabled:opacity-45"
             >
-              <Sparkles
-                aria-hidden="true"
-                className="h-4 w-4"
-              />
+              {starting ? (
+                <>
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
 
-              Comenzar evaluación
+                  Preparando evaluación
+                </>
+              ) : canStart ? (
+                <>
+                  <Sparkles
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+
+                  Comenzar evaluación
+                </>
+              ) : (
+                <>
+                  <AlertTriangle
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+
+                  Sin intentos disponibles
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1159,18 +979,21 @@ function ExamIntroduction({
 
 interface ExamResultScreenProps {
   exam: StudentExam;
+  attempt: ExamAttemptRecord;
   result: ExamResult;
-  answers: Record<
-    string,
-    ExamAnswer
-  >;
+  bestScore: number | null;
+  attemptsRemaining: number;
+  starting: boolean;
   onRetry: () => void;
 }
 
 function ExamResultScreen({
   exam,
+  attempt,
   result,
-  answers,
+  bestScore,
+  attemptsRemaining,
+  starting,
   onRetry,
 }: ExamResultScreenProps) {
   return (
@@ -1216,7 +1039,8 @@ function ExamResultScreen({
           </div>
 
           <p className="mt-7 text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
-            Resultado de la evaluación
+            Resultado del intento{" "}
+            {attempt.attemptNumber}
           </p>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-[-0.05em] sm:text-6xl">
@@ -1238,6 +1062,15 @@ function ExamResultScreen({
             {exam.questions.length} preguntas.
           </p>
 
+          {attempt.submissionReason ===
+            "time-expired" && (
+            <p className="mx-auto mt-3 max-w-xl text-xs text-white/45">
+              Este intento fue entregado
+              automáticamente al finalizar el
+              tiempo.
+            </p>
+          )}
+
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href="/student/exams"
@@ -1251,17 +1084,24 @@ function ExamResultScreen({
               Volver a evaluaciones
             </Link>
 
-            {exam.attemptsAllowed >
-              1 && (
+            {attemptsRemaining > 0 && (
               <button
                 type="button"
+                disabled={starting}
                 onClick={onRetry}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#59e4d2] px-5 text-sm font-bold text-[#05231f]"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#59e4d2] px-5 text-sm font-bold text-[#05231f] disabled:pointer-events-none disabled:opacity-50"
               >
-                <RotateCcw
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                />
+                {starting ? (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <RotateCcw
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                  />
+                )}
 
                 Realizar otro intento
               </button>
@@ -1284,35 +1124,39 @@ function ExamResultScreen({
         />
 
         <ResultMetric
-          icon={ClipboardCheck}
-          value={`${result.answeredQuestions}/${exam.questions.length}`}
-          label="Respondidas"
+          icon={Award}
+          value={
+            bestScore === null
+              ? `${result.score}%`
+              : `${bestScore}%`
+          }
+          label="Mejor nota"
         />
 
         <ResultMetric
-          icon={Award}
-          value={`${exam.weight}%`}
-          label="Ponderación"
+          icon={ClipboardCheck}
+          value={`${attemptsRemaining}`}
+          label="Intentos restantes"
         />
       </section>
 
       <section className="rounded-[2rem] border border-border bg-card/75 p-5 shadow-sm sm:p-7">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-            Revisión
-          </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Revisión
+        </p>
 
-          <h2 className="mt-2 text-xl font-semibold">
-            Resumen de respuestas
-          </h2>
-        </div>
+        <h2 className="mt-2 text-xl font-semibold">
+          Resumen de respuestas
+        </h2>
 
         <div className="mt-6 grid gap-3">
           {exam.questions.map(
             (question, index) => {
               const correct =
-                answersMatch(
-                  answers[question.id],
+                examAnswersMatch(
+                  attempt.answers[
+                    question.id
+                  ],
                   question.correctAnswer,
                 );
 
@@ -1352,9 +1196,7 @@ function ExamResultScreen({
                     </h3>
 
                     <p className="mt-2 text-xs leading-6 text-muted-foreground">
-                      {
-                        question.explanation
-                      }
+                      {question.explanation}
                     </p>
                   </div>
 
@@ -1381,46 +1223,46 @@ function ExamResultScreen({
   );
 }
 
-interface IntroBadgeProps {
-  icon: typeof Clock3;
-  text: string;
-}
-
-function IntroBadge({
-  icon: Icon,
-  text,
-}: IntroBadgeProps) {
+function ExamLoadingScreen() {
   return (
-    <div className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/70 backdrop-blur-xl">
-      <Icon
-        aria-hidden="true"
-        className="h-4 w-4 text-[#59e4d2]"
-      />
+    <section className="flex min-h-[34rem] items-center justify-center rounded-[2rem] border border-border bg-card/75">
+      <div className="text-center">
+        <LoaderCircle
+          aria-hidden="true"
+          className="mx-auto h-9 w-9 animate-spin text-primary"
+        />
 
-      {text}
-    </div>
+        <h1 className="mt-5 text-lg font-semibold">
+          Recuperando evaluación
+        </h1>
+
+        <p className="mt-2 text-sm text-muted-foreground">
+          Cargando tu último intento desde
+          Firestore.
+        </p>
+      </div>
+    </section>
   );
 }
 
-interface LegendItemProps {
-  surface: string;
+interface IntroMetricProps {
+  value: string;
   label: string;
 }
 
-function LegendItem({
-  surface,
+function IntroMetric({
+  value,
   label,
-}: LegendItemProps) {
+}: IntroMetricProps) {
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={cn(
-          "h-3 w-3 rounded",
-          surface,
-        )}
-      />
+    <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-center">
+      <p className="text-lg font-semibold">
+        {value}
+      </p>
 
-      {label}
+      <p className="mt-1 text-[0.68rem] text-white/45">
+        {label}
+      </p>
     </div>
   );
 }
