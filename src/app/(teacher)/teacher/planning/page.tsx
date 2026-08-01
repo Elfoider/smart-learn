@@ -1,25 +1,13 @@
 import type { Metadata } from "next";
-import { FileText } from "lucide-react";
 
-import { TeacherModulePlaceholder } from "@/components/teacher/teacher-module-placeholder";
+import { TeacherPlanningManager } from "@/components/teacher/teacher-planning-manager";
 
 export const metadata: Metadata = {
   title: "Planificación docente",
+  description:
+    "Gestión de objetivos, contenidos, estrategias y actividades académicas.",
 };
 
 export default function TeacherPlanningPage() {
-  return (
-    <TeacherModulePlaceholder
-      icon={FileText}
-      eyebrow="Organización académica"
-      title="Planificación docente"
-      description="Organiza objetivos, contenidos, estrategias, recursos y actividades para cada unidad académica."
-      features={[
-        "Crear planes de clase por unidad.",
-        "Definir objetivos y contenidos.",
-        "Registrar estrategias y recursos.",
-        "Generar borradores mediante inteligencia artificial.",
-      ]}
-    />
-  );
+  return <TeacherPlanningManager />;
 }
