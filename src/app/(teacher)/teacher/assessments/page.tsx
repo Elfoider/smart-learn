@@ -1,25 +1,13 @@
 import type { Metadata } from "next";
-import { ClipboardCheck } from "lucide-react";
 
-import { TeacherModulePlaceholder } from "@/components/teacher/teacher-module-placeholder";
+import { TeacherAssessmentManager } from "@/components/teacher/teacher-assessment-manager";
 
 export const metadata: Metadata = {
-  title: "Evaluaciones",
+  title: "Evaluaciones y rúbricas",
+  description:
+    "Gestión docente de evaluaciones, ponderaciones y criterios de calificación.",
 };
 
 export default function TeacherAssessmentsPage() {
-  return (
-    <TeacherModulePlaceholder
-      icon={ClipboardCheck}
-      eyebrow="Evaluación académica"
-      title="Evaluaciones y calificaciones"
-      description="Diseña actividades evaluativas, configura ponderaciones y administra las calificaciones de tus estudiantes."
-      features={[
-        "Crear evaluaciones gráficas.",
-        "Definir ponderaciones y fechas.",
-        "Crear rúbricas de evaluación.",
-        "Calcular promedios automáticamente.",
-      ]}
-    />
-  );
+  return <TeacherAssessmentManager />;
 }
