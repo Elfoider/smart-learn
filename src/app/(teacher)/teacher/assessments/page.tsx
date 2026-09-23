@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 
-import { TeacherAssessmentManager } from "@/components/teacher/teacher-assessment-manager";
+import { TeacherAssessmentWorkspace } from "@/components/teacher/teacher-assessment-workspace";
 
 export const metadata: Metadata = {
-  title: "Evaluaciones y rúbricas",
+  title:
+    "Evaluaciones y calificaciones",
   description:
-    "Gestión docente de evaluaciones, ponderaciones y criterios de calificación.",
+    "Gestión docente de evaluaciones, rúbricas, ponderaciones y calificaciones.",
 };
 
 export default function TeacherAssessmentsPage() {
-  return <TeacherAssessmentManager />;
+  return (
+    <TeacherAssessmentWorkspace />
+  );
 }

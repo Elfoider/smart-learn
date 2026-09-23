@@ -67,5 +67,6 @@ export function getAdminAuth(): Auth {
 export function getAdminDb(): Firestore {
   return getFirestore(
     getFirebaseAdminApp(),
+    "smart-learn-db"
   );
 }
