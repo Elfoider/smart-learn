@@ -19,6 +19,7 @@
 
 # production
 /build
+/PALDOPROGRAMA
 
 # misc
 .DS_Store
