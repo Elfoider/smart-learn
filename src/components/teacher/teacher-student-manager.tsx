@@ -2,7 +2,6 @@
 
 import {
   BookOpen,
-  CheckCircle2,
   Edit3,
   GraduationCap,
   Layers3,

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateTutorResponse } from "@/lib/ai/tutor-service";
+import { playgroundCourses } from "@/data/playground";
 import {
   getAdminAuth,
   getAdminDb,
@@ -428,9 +429,35 @@ export async function POST(
       );
     }
 
-    const payload:
-      TutorRequestPayload =
-        parsed.data;
+    // Resolve academic content on the server. The browser may only choose IDs
+    // and submit its question; it cannot supply the model's trusted context.
+    const selectedCourse = playgroundCourses.find(item => item.id === parsed.data.courseId);
+    const selectedTopic = selectedCourse?.topics.find(item => item.id === parsed.data.topicId);
+    const selectedExercise = selectedTopic?.exercises.find(item => item.id === parsed.data.exercise.id);
+    if (!selectedCourse || !selectedTopic || !selectedExercise) {
+      return NextResponse.json({ error: "Ejercicio no disponible." }, { status: 404 });
+    }
+    const payload: TutorRequestPayload = {
+      action: parsed.data.action,
+      message: parsed.data.message,
+      courseId: selectedCourse.id,
+      courseCode: selectedCourse.code,
+      courseTitle: selectedCourse.title,
+      topicId: selectedTopic.id,
+      topicTitle: selectedTopic.title,
+      topicDescription: selectedTopic.description,
+      exercise: {
+        id: selectedExercise.id,
+        title: selectedExercise.title,
+        prompt: selectedExercise.prompt,
+        type: selectedExercise.type,
+        difficulty: selectedExercise.difficulty,
+        correctAnswer: selectedExercise.correctAnswer,
+        hints: selectedExercise.hints,
+        explanation: selectedExercise.explanation,
+      },
+      history: parsed.data.history,
+    };
 
     const quota =
       await consumeDailyQuota(

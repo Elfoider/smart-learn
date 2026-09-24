@@ -2,7 +2,6 @@
 
 import {
   Archive,
-  ArrowRight,
   BookOpen,
   Building2,
   CalendarDays,

@@ -1,4 +1,5 @@
 import {
+  applicationDefault,
   cert,
   getApp,
   getApps,
@@ -14,19 +15,13 @@ import {
   type Firestore,
 } from "firebase-admin/firestore";
 
-function getRequiredEnvironmentValue(
-  name: string,
-) {
-  const value =
-    process.env[name]?.trim();
-
-  if (!value) {
-    throw new Error(
-      `firebase-admin/missing-config:${name}`,
-    );
+function appHostingProjectId() {
+  try {
+    const config = JSON.parse(process.env.FIREBASE_CONFIG || "{}");
+    return typeof config.projectId === "string" ? config.projectId : undefined;
+  } catch {
+    return undefined;
   }
-
-  return value;
 }
 
 function getFirebaseAdminApp(): App {
@@ -34,28 +29,20 @@ function getFirebaseAdminApp(): App {
     return getApp();
   }
 
-  const projectId =
-    getRequiredEnvironmentValue(
-      "FIREBASE_PROJECT_ID",
-    );
-
-  const clientEmail =
-    getRequiredEnvironmentValue(
-      "FIREBASE_CLIENT_EMAIL",
-    );
-
-  const privateKey =
-    getRequiredEnvironmentValue(
-      "FIREBASE_PRIVATE_KEY",
-    ).replace(/\\n/g, "\n");
-
-  return initializeApp({
-    credential: cert({
-      projectId,
-      clientEmail,
-      privateKey,
-    }),
-  });
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim()
+    || process.env.GOOGLE_CLOUD_PROJECT?.trim()
+    || process.env.GCLOUD_PROJECT?.trim()
+    || appHostingProjectId();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.trim();
+  if (clientEmail && privateKey && projectId) {
+    return initializeApp({ credential: cert({
+      projectId, clientEmail, privateKey: privateKey.replace(/\\n/g, "\n"),
+    }), projectId });
+  }
+  if (!projectId) throw new Error("firebase-admin/missing-config:FIREBASE_PROJECT_ID");
+  // Firebase App Hosting supplies Application Default Credentials to the server.
+  return initializeApp({ credential: applicationDefault(), projectId });
 }
 
 export function getAdminAuth(): Auth {

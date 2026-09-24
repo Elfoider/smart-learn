@@ -5,7 +5,6 @@ import type {
 } from "lucide-react";
 import {
   Archive,
-  BookOpen,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,

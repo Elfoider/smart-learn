@@ -4,7 +4,6 @@ import type {
   LucideIcon,
 } from "lucide-react";
 import {
-  BookOpen,
   CalendarRange,
   Clock3,
   Eye,
@@ -13,7 +12,6 @@ import {
   Layers3,
   LoaderCircle,
   Save,
-  Sparkles,
   X,
 } from "lucide-react";
 import {

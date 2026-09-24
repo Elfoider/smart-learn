@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function active(role) { return signedIn() && profile().role == role && profile().status == 'active'; }
+    function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function teaches(courseId) {
+      return active('teacher') && exists(/databases/$(database)/documents/courses/$(courseId))
+        && get(/databases/$(database)/documents/courses/$(courseId)).data.teacherId == request.auth.uid;
+    }
+    function enrolled(courseId) {
+      return active('student') && exists(/databases/$(database)/documents/enrollments/$(courseId + '--' + request.auth.uid))
+        && get(/databases/$(database)/documents/enrollments/$(courseId + '--' + request.auth.uid)).data.status == 'active';
+    }
+    function enrolledInSection(courseId, sectionId) {
+      return enrolled(courseId) && (sectionId == null
+        || get(/databases/$(database)/documents/enrollments/$(courseId + '--' + request.auth.uid)).data.sectionId == sectionId);
+    }
+    function teacherWrite() { return active('teacher') && request.resource.data.teacherId == request.auth.uid; }
+    function teacherUpdate() { return active('teacher') && resource.data.teacherId == request.auth.uid
+      && request.resource.data.teacherId == resource.data.teacherId && request.resource.data.courseId == resource.data.courseId; }
+    match /users/{uid} {
+      allow get: if owner(uid) || active('admin');
+      allow list: if active('admin');
+      allow create: if owner(uid) && request.resource.data.keys().hasOnly(['uid','name','email','role','status','photoURL','createdAt','updatedAt'])
+        && request.resource.data.uid == uid && request.resource.data.role == 'student'
+        && request.resource.data.status == 'active' && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if active('admin');
+      match /courseProgress/{id} { allow read, write: if owner(uid) && active('student'); }
+      match /lessonNotes/{id} { allow read, write: if owner(uid) && active('student'); }
+      match /playgroundSessions/{id} { allow read, write: if owner(uid) && active('student'); }
+      match /examProgress/{id} { allow read: if owner(uid) && active('student'); }
+      match /examAttempts/{id} {
+        allow read: if owner(uid) && active('student');
+        allow update: if owner(uid) && active('student') && resource.data.status == 'in-progress'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers','flaggedQuestionIds','currentQuestionIndex','remainingSeconds','updatedAt']);
+      }
+      match /aiUsage/{id} { allow read: if owner(uid); }
+    }
+    match /courses/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || enrolled(id) || active('admin');
+      allow create: if teacherWrite();
+      allow update: if active('teacher') && resource.data.teacherId == request.auth.uid
+        && request.resource.data.teacherId == resource.data.teacherId;
+    }
+    match /sections/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || enrolled(resource.data.courseId) || active('admin');
+      allow create: if teacherWrite() && getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.teacherId == request.auth.uid;
+      allow update: if teacherUpdate();
+    }
+    match /enrollments/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || owner(resource.data.studentId) || active('admin');
+    }
+    match /lessonPlans/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+        || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId);
+      allow update: if teacherUpdate();
+      allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
+    }
+    match /assessments/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+        || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId);
+      allow update: if teacherUpdate();
+      allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
+    }
+    match /grades/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+        || (owner(resource.data.studentId) && resource.data.status == 'published');
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId)
+        && exists(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId))
+        && get(/databases/$(database)/documents/enrollments/$(request.resource.data.enrollmentId)).data.studentId == request.resource.data.studentId;
+      allow update: if teacherUpdate() && request.resource.data.studentId == resource.data.studentId;
+    }
+    match /materials/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+        || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId);
+      allow update: if teacherUpdate();
+      allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
+    }
+    match /onlineClasses/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+        || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId);
+      allow update: if teacherUpdate();
+      allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
+    }
+    match /attendance/{id} {
+      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || owner(resource.data.studentId);
+      allow create: if teacherWrite() && teaches(request.resource.data.courseId)
+        && exists(/databases/$(database)/documents/enrollments/$(request.resource.data.courseId + '--' + request.resource.data.studentId));
+      allow update: if teacherUpdate() && request.resource.data.studentId == resource.data.studentId;
+    }
+    match /aiLogs/{id} { allow read: if active('admin'); }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

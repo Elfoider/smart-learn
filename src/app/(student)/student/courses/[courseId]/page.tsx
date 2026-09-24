@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
+import { LiveClassroom } from "@/components/student/live-classroom";
 import { LearningClassroom } from "@/components/learning/learning-classroom";
 import {
   getLearningCourse,
@@ -44,7 +44,7 @@ export default async function CoursePage({
   const course = getLearningCourse(courseId);
 
   if (!course) {
-    notFound();
+    return <LiveClassroom courseId={courseId} />;
   }
 
   return (

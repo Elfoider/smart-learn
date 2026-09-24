@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:rules": "node --test tests/firestore.rules.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.14.0",
@@ -27,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -34,11 +36,12 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "firebase-tools": "^15.30.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "engines": {
     "node": "24.x",
-    "npm": "10.9.9"
+    "npm": ">=10.9.9 <13"
   }
 }

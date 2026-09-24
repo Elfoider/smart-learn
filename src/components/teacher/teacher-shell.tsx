@@ -87,6 +87,11 @@ const navigationItems: NavigationItem[] = [
     icon: GraduationCap,
   },
   {
+    label: "Clases en línea",
+    href: "/teacher/online-classes",
+    icon: BookOpen,
+  },
+  {
     label: "Asistente IA",
     href: "/teacher/ai",
     icon: Bot,
@@ -102,7 +107,7 @@ const mobileNavigationItems: NavigationItem[] = [
   navigationItems[0],
   navigationItems[1],
   navigationItems[2],
-  navigationItems[7],
+  navigationItems[8],
 ];
 
 export function TeacherShell({
