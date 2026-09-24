@@ -301,9 +301,11 @@ export function SmartTutorPanel({
                 : "border-primary/15 bg-background/60 text-secondary-foreground",
             )}
           >
-            {lastProvider === "gemini"
-              ? "Gemini"
-              : "Respaldo"}
+            {lastProvider === null
+              ? "Sin comprobar"
+              : lastProvider === "gemini"
+                ? "Gemini"
+                : "Respaldo"}
           </div>
         </div>
 
