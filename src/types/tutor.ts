@@ -6,6 +6,7 @@ export type TutorAction =
 
 export type TutorProvider =
   | "gemini"
+  | "ollama"
   | "fallback";
 
 export interface TutorHistoryMessage {

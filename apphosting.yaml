@@ -1,5 +1,25 @@
 env:
-  - variable: GEMINI_API_KEY
-    secret: GEMINI_API_KEY
+  - variable: AI_PROVIDER
+    value: ollama
+    availability:
+      - RUNTIME
+  - variable: LOCAL_AI_URL
+    value: https://desktop-2ckik7s.tail918b1e.ts.net
+    availability:
+      - RUNTIME
+  - variable: LOCAL_AI_TOKEN
+    secret: LOCAL_AI_TOKEN
+    availability:
+      - RUNTIME
+  - variable: OLLAMA_MODEL
+    value: qwen2.5:3b
+    availability:
+      - RUNTIME
+  - variable: LOCAL_AI_TIMEOUT_MS
+    value: "60000"
+    availability:
+      - RUNTIME
+  - variable: AI_FALLBACK_ENABLED
+    value: "true"
     availability:
       - RUNTIME

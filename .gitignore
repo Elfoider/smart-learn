@@ -45,3 +45,7 @@ next-env.d.ts
 serviceAccountKey.json
 /PALDOPROGRAMA/
 /firestore-debug.log
+
+local-ai/.env
+backups-ia-local/
+

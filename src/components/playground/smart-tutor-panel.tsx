@@ -305,7 +305,9 @@ export function SmartTutorPanel({
               ? "Sin comprobar"
               : lastProvider === "gemini"
                 ? "Gemini"
-                : "Respaldo"}
+                : lastProvider === "ollama"
+                  ? "IA local"
+                  : "Respaldo"}
           </div>
         </div>
 
