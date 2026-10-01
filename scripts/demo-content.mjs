@@ -1,0 +1,79 @@
+import { expandedLessons } from "./demo-expanded-content.mjs";
+// Contenido académico de demostración, editable desde el portal docente.
+export const demoCourses = [
+  { slug: "web", name: "Programación Web", code: "WEB-DEMO", area: "Informática", tone: "teal", description: "Construye interfaces con JavaScript y comprende el flujo de datos de React.", lessons: [
+    { unit: "Unidad 1 · JavaScript", title: "Variables, funciones y decisiones", objective: "Distinguir valores, funciones y condiciones en un programa sencillo.", concept: "Una variable guarda un valor. const impide reasignar la referencia; let permite reasignarla. Una función agrupa instrucciones y puede devolver un resultado. Una condición selecciona qué bloque ejecutar.", example: "Ejemplo: const precio = 10; const cantidad = 3; function total(p, c) { return p * c; }. total(precio, cantidad) devuelve 30. Una condición if (cantidad > 0) permite validar antes de calcular.", activity: "Escribe una función que reciba dos precios y devuelva su suma. Después añade una condición que rechace precios negativos." },
+    { unit: "Unidad 1 · JavaScript", title: "Arreglos y transformación de datos", objective: "Elegir map o filter para transformar una lista sin modificarla directamente.", concept: "Un arreglo agrupa valores ordenados. map crea un arreglo con el resultado de aplicar una función a cada elemento. filter crea un arreglo con los elementos que cumplen una condición. Ninguno modifica el arreglo original por sí mismo.", example: "Ejemplo: [2, 4, 6].map(n => n * 2) produce [4, 8, 12]. [2, 4, 6].filter(n => n > 3) produce [4, 6]. map transforma; filter selecciona.", activity: "A partir de una lista de tres productos, filtra los que tienen stock y transforma sus nombres a mayúsculas." },
+    { unit: "Unidad 2 · React", title: "Componentes, props y estado", objective: "Explicar el origen de las props y el papel del estado en una interfaz.", concept: "Un componente describe parte de la interfaz. Las props son entradas que recibe, normalmente desde su padre, y debe tratarlas como inmutables. El estado conserva información del componente entre renderizados. Actualizar el estado puede provocar un nuevo renderizado. Las props no son herencia de JavaScript.", example: "Ejemplo: un padre pasa titulo='Contador' como prop. El hijo usa const [cantidad, setCantidad] = useState(0). Un botón llama setCantidad(c => c + 1). El título llega desde fuera; la cantidad cambia mediante el estado.", activity: "Dibuja un componente de contador e identifica una prop y un valor de estado. Explica por qué no debes asignar directamente un nuevo valor a una prop." },
+    { unit: "Unidad 2 · React", title: "Eventos y formularios controlados", objective: "Relacionar un evento de entrada con una actualización de estado.", concept: "Un evento permite reaccionar a una acción del usuario. En un formulario controlado, el valor de una entrada proviene del estado y onChange actualiza ese estado. El envío del formulario permite validar los datos antes de utilizarlos.", example: "Ejemplo: <input value={nombre} onChange={e => setNombre(e.target.value)} />. El estado nombre representa el texto visible. En onSubmit, event.preventDefault() evita la navegación normal del formulario cuando la aplicación gestiona el envío.", activity: "Describe cómo validarías que un nombre tenga al menos tres caracteres antes de enviar un formulario." },
+  ] },
+  { slug: "db", name: "Bases de Datos", code: "BD-DEMO", area: "Informática", tone: "violet", description: "Modela información, consulta tablas y aplica integridad a tus datos.", lessons: [
+    { unit: "Unidad 1 · Modelado", title: "Entidades, atributos y relaciones", objective: "Identificar entidades y relaciones en un sistema académico.", concept: "Una entidad representa un objeto o concepto del dominio. Sus atributos describen propiedades. Una relación conecta entidades. La cardinalidad expresa cuántas instancias pueden relacionarse: uno a uno, uno a muchos o muchos a muchos.", example: "Ejemplo: Estudiante tiene id y nombre; Materia tiene id y título. Una matrícula conecta un estudiante con una materia. Como ambos pueden tener varias relaciones, Matrícula puede modelar la relación muchos a muchos.", activity: "Dibuja las entidades Estudiante, Materia y Matrícula. Indica sus identificadores y cardinalidades." },
+    { unit: "Unidad 1 · Modelado", title: "Claves e integridad referencial", objective: "Distinguir una clave primaria de una clave foránea.", concept: "Una clave primaria identifica de forma única una fila y no admite valores nulos. Una clave foránea referencia una clave válida de otra tabla, o de la misma tabla. La integridad referencial ayuda a evitar referencias a registros inexistentes.", example: "Ejemplo: Estudiante(id, nombre) usa id como clave primaria. Matrícula(estudiante_id, materia_id) referencia los identificadores existentes. Una matrícula para un estudiante inexistente debe rechazarse si la restricción está configurada.", activity: "Explica qué sucedería al eliminar un estudiante con matrículas y compara restringir la eliminación con eliminar en cascada." },
+    { unit: "Unidad 2 · Consultas", title: "SELECT, WHERE y ordenamiento", objective: "Construir una consulta para seleccionar y ordenar registros.", concept: "SELECT indica qué columnas devolver. FROM indica la tabla. WHERE filtra filas mediante una condición. ORDER BY establece el orden del resultado. Sin ORDER BY no se debe asumir un orden determinado.", example: "Ejemplo: SELECT nombre FROM estudiantes WHERE activo = 1 ORDER BY nombre ASC; devuelve nombres de estudiantes activos ordenados alfabéticamente.", activity: "Escribe una consulta para obtener productos con precio mayor a 20 y ordenarlos del más caro al más barato." },
+    { unit: "Unidad 2 · Consultas", title: "JOIN y transacciones", objective: "Comprender la unión de tablas y la atomicidad de una transacción.", concept: "JOIN combina filas de tablas según una condición. INNER JOIN conserva coincidencias; LEFT JOIN conserva las filas de la izquierda aunque no haya coincidencia. Una transacción agrupa operaciones: la atomicidad implica que se aplican todas o ninguna.", example: "Ejemplo: estudiantes e JOIN matriculas m ON e.id = m.estudiante_id permite relacionar nombres y matrículas. En una transferencia, descontar de una cuenta y sumar a otra deben formar una transacción para evitar una actualización parcial.", activity: "Explica por qué dos actualizaciones independientes pueden dejar un saldo inconsistente cuando una de ellas falla." },
+  ] },
+  { slug: "ia", name: "Introducción a la Inteligencia Artificial", code: "IA-DEMO", area: "Computación", tone: "amber", description: "Comprende aprendizaje automático, evaluación y uso responsable de asistentes generativos.", lessons: [
+    { unit: "Unidad 1 · Fundamentos", title: "Datos, modelos y aprendizaje", objective: "Distinguir datos de entrenamiento, modelo y predicción.", concept: "El aprendizaje automático ajusta un modelo a partir de datos para resolver una tarea. Los datos contienen ejemplos; el modelo representa relaciones aprendidas; la predicción es una salida ante un ejemplo nuevo. Aprender patrones no garantiza comprender ni acertar siempre.", example: "Ejemplo: un clasificador recibe mensajes etiquetados como spam o no spam durante entrenamiento. Después estima la etiqueta de un mensaje nuevo. Su desempeño depende de la calidad y representatividad de los ejemplos.", activity: "Identifica las entradas y salidas de un modelo que estime si una planta necesita riego." },
+    { unit: "Unidad 1 · Fundamentos", title: "Aprendizaje supervisado y no supervisado", objective: "Elegir un enfoque según la disponibilidad de etiquetas.", concept: "En aprendizaje supervisado se utilizan ejemplos con una salida objetivo. La clasificación predice categorías y la regresión valores numéricos. En aprendizaje no supervisado se buscan estructuras sin etiquetas objetivo, como agrupamientos.", example: "Ejemplo: predecir el precio de una vivienda con precios históricos es regresión supervisada. Agrupar clientes por comportamiento sin categorías previas es un problema de agrupamiento no supervisado.", activity: "Clasifica tres problemas: detectar spam etiquetado, estimar una temperatura y agrupar documentos sin categorías." },
+    { unit: "Unidad 2 · Evaluación y uso", title: "Evaluación y sobreajuste", objective: "Explicar por qué evaluar con datos separados del entrenamiento.", concept: "Separar entrenamiento y prueba ayuda a medir generalización. El sobreajuste aparece cuando el modelo se adapta demasiado a particularidades de entrenamiento y falla en ejemplos nuevos. La exactitud es la fracción de predicciones correctas y puede resultar engañosa con clases muy desbalanceadas.", example: "Ejemplo: un conjunto con 95 mensajes normales y 5 spam permite obtener 95% de exactitud prediciendo siempre normal, pero no detectaría ningún spam. La evaluación debe considerar la tarea y métricas apropiadas.", activity: "Explica por qué un modelo con buenos resultados en entrenamiento puede no funcionar bien con nuevos estudiantes." },
+    { unit: "Unidad 2 · Evaluación y uso", title: "IA generativa, contexto y verificación", objective: "Usar un asistente como apoyo y verificar sus afirmaciones.", concept: "Un modelo generativo produce contenido a partir de patrones aprendidos y del contexto recibido. Puede generar información incorrecta con apariencia convincente. Un prompt claro define tarea, contexto y formato; no garantiza verdad. Debe protegerse la información personal y revisarse el resultado.", example: "Ejemplo: pedir una pista basada en una clase publicada reduce ambigüedad. Si el asistente propone una bibliografía inexistente, debe verificarse con fuentes reales. No se deben enviar cédulas ni contraseñas como parte de una pregunta.", activity: "Redacta un prompt que solicite una explicación breve de un concepto, incluya contexto y pida reconocer cuando falte información." },
+  ] },
+];
+for (const course of demoCourses) course.lessons.push(...expandedLessons[course.slug]);
+
+export function buildDemoDocuments({ teacherUid, students, baseUrl, now = new Date(), withProgress = false }) {
+  const docs = [];
+  const date = days => { const d = new Date(now); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0,16); };
+  const add = (path, data) => docs.push({ path, data: { ...data, demo: true, demoVersion: 2 } });
+  for (const [courseIndex, course] of demoCourses.entries()) {
+    const courseId = `demo-${course.slug}`;
+    const sectionId = `${courseId}-a`;
+    const shared = { teacherId: teacherUid, courseId, sectionId, createdAt: now, updatedAt: now };
+    add(`courses/${courseId}`, { teacherId: teacherUid, name: course.name, code: course.code, description: course.description,
+      area: course.area, period: "Demostración", status: "active", tone: course.tone, sectionsCount: 1, studentsCount: students.length, createdAt: now, updatedAt: now });
+    add(`sections/${sectionId}`, { ...shared, code: "DEMO-A", scheduleDays: ["Lun", "Mié"], startTime: "09:00", endTime: "10:00", classroom: "Salón de demostración", modality: "hybrid", capacity: 30, status: "active" });
+    for (const [index, lesson] of course.lessons.entries()) {
+      add(`lessonPlans/${courseId}-clase-${index + 1}`, { ...shared, title: lesson.title, unit: lesson.unit,
+        weekLabel: `Semana ${Math.floor(index / 2) + 1}`, startDate: date(index).slice(0,10), endDate: date(index + 1).slice(0,10), estimatedMinutes: 30,
+        objectives: [lesson.objective], contents: [lesson.concept], notes: "Contenido preparado para demostración académica.", lessonContent: `${lesson.concept}\n\n${lesson.example}\n\nReflexión: ${lesson.activity}`,
+        strategies: ["Explicación guiada", "Ejemplo aplicado", "Práctica con retroalimentación"], resources: ["Guía de estudio de la unidad", "Playground académico"],
+        activities: [lesson.activity], evaluationEvidence: "Respuesta razonada y práctica completada", status: "scheduled", visibleToStudents: true, publishedAt: now });
+    }
+    for (let unit = 1; unit <= course.lessons.length / 2; unit++) {
+      add(`materials/${courseId}-guia-${unit}`, { ...shared, title: `Guía de estudio · ${course.name} · Unidad ${unit}`, unit: `Unidad ${unit}`,
+        url: `${baseUrl}/demo-materials/${course.slug}-unidad-${unit}.html`, kind: "document", visibleToStudents: true });
+      if (unit <= 2) add(`onlineClasses/${courseId}-encuentro-${unit}`, { ...shared, title: `Repaso de ${course.name} · Unidad ${unit} (demostración)`, unit: `Unidad ${unit}`,
+        url: `${baseUrl}/student/courses/${courseId}`, kind: "live", startsAt: date(3 + courseIndex + unit), visibleToStudents: true });
+    }
+    const assessmentId = `${courseId}-actividad`;
+    add(`assessments/${assessmentId}`, { ...shared, title: `Actividad integradora · ${course.name}`, description: "Actividad de demostración para aplicar los conceptos de las dos primeras unidades.",
+      instructions: course.lessons.slice(0, 4).map(l => l.activity).join("\n\n"), type: "assignment", deliveryMode: "manual", weightPercentage: 20, maxScore: 20, passingScore: 10,
+      opensAt: date(0), closesAt: date(7), durationMinutes: 30, attemptsAllowed: 1, rubric: [{ id: "comprension", title: "Comprensión", description: "Explica los conceptos correctamente", points: 10 }, { id: "aplicacion", title: "Aplicación", description: "Resuelve el caso y justifica sus decisiones", points: 10 }], status: "open", visibleToStudents: true, publishedAt: now });
+    for (let unit = 3; unit <= course.lessons.length / 2; unit++) {
+      const lessons = course.lessons.slice((unit - 1) * 2, unit * 2);
+      add(`assessments/${courseId}-actividad-unidad-${unit}`, { ...shared,
+        title: `Taller · ${course.name} · Unidad ${unit}`, description: "Taller de aplicación con entrega y revisión manual del docente.",
+        instructions: lessons.map(l => `${l.title}\n${l.activity}`).join("\n\n"),
+        type: "assignment", deliveryMode: "manual", weightPercentage: 0, maxScore: 20, passingScore: 10,
+        opensAt: date(0), closesAt: date(30), durationMinutes: 60, attemptsAllowed: 1,
+        rubric: [{ id: "comprension", title: "Comprensión", description: "Explica y distingue los conceptos", points: 10 },
+          { id: "aplicacion", title: "Aplicación", description: "Resuelve el caso y justifica decisiones", points: 10 }],
+        status: "open", visibleToStudents: true, publishedAt: now });
+    }
+    for (const [index, student] of students.entries()) {
+      const enrollmentId = `${courseId}--${student.uid}`;
+      const identity = { studentId: student.uid, studentName: student.name, studentEmail: student.email };
+      add(`enrollments/${enrollmentId}`, { ...shared, ...identity, studentPhotoURL: null, status: "active", enrolledAt: now });
+      if (withProgress) {
+        add(`grades/${assessmentId}--${student.uid}`, { ...shared, ...identity, enrollmentId, assessmentId, assessmentTitle: `Resultado de muestra · ${course.name}`,
+          score: index ? 14 : 17, maxScore: 20, weightPercentage: 20, normalizedPercentage: index ? 70 : 85, weightedPoints: index ? 14 : 17,
+          feedback: "Dato simulado para la demostración; no es una calificación real.", status: "published", gradedAt: now, publishedAt: now });
+        add(`attendance/${courseId}--${student.uid}--demo`, { ...shared, ...identity, date: date(0).slice(0,10), status: "present" });
+        add(`users/${student.uid}/courseProgress/${courseId}`, { courseId, currentLessonId: `${courseId}-clase-2`, completedLessonIds: [`${courseId}-clase-1`], updatedAt: now });
+        add(`users/${student.uid}/playgroundSessions/${courseId}--real`, { courseId, topicId: "real", sessionId: `${courseId}--real`, attempts: 0, correctAnswers: 0, updatedAt: now });
+      }
+    }
+  }
+  return docs;
+}

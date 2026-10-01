@@ -18,7 +18,7 @@ export function LiveCourses() {
   const enrollment = useStudentEnrollments();
   const ids = enrollment.data.filter(e => e.status === "active").map(e => e.courseId);
   return <section className="space-y-4 rounded-3xl border border-border bg-card p-6">
-    <div><p className="text-sm font-semibold text-teal-600">Firestore · smart-learn-db</p><h2 className="mt-1 text-2xl font-semibold">Mis materias inscritas</h2></div>
+    <div><p className="text-sm font-semibold text-teal-600">Tu salón virtual</p><h2 className="mt-1 text-2xl font-semibold">Mis materias inscritas</h2></div>
     {enrollment.loading && <p>Cargando inscripciones…</p>}{enrollment.error && <p role="alert">{enrollment.error}</p>}
     {!enrollment.loading && !ids.length && <p>Aún no tienes materias inscritas. Pide a tu docente que te inscriba.</p>}
     <div className="grid gap-3 md:grid-cols-2">{ids.map(id => <LiveCourseCard key={id} id={id} />)}</div>

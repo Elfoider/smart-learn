@@ -149,6 +149,7 @@ function parseLessonPlan(
       "string"
         ? data.evaluationEvidence
         : "",
+    lessonContent: typeof data.lessonContent === "string" ? data.lessonContent : "",
     notes:
       typeof data.notes === "string"
         ? data.notes
@@ -266,6 +267,7 @@ export async function createTeacherPlan(
       evaluationEvidence:
         values.evaluationEvidence.trim(),
       notes: values.notes.trim(),
+      lessonContent: (values.lessonContent || "").trim(),
       status: values.status,
       visibleToStudents:
         values.visibleToStudents,
@@ -319,6 +321,7 @@ export async function updateTeacherPlan(
       evaluationEvidence:
         values.evaluationEvidence.trim(),
       notes: values.notes.trim(),
+      lessonContent: (values.lessonContent || "").trim(),
       status: values.status,
       visibleToStudents:
         values.visibleToStudents,
@@ -402,6 +405,7 @@ export async function duplicateTeacherPlan(
       evaluationEvidence:
         plan.evaluationEvidence,
       notes: plan.notes,
+      lessonContent: plan.lessonContent || "",
       status: "draft",
       visibleToStudents: false,
       publishedAt: null,

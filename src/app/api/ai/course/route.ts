@@ -7,13 +7,13 @@ import { requireActiveStudent, StudentApiError } from "@/lib/server/student-api-
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const schema = z.object({ courseId: z.string().min(1).max(150), question: z.string().trim().min(3).max(1200) });
+const schema = z.object({ courseId: z.string().min(1).max(150), lessonId: z.string().min(1).max(150).optional(), question: z.string().trim().min(3).max(1200) });
 export async function POST(request: Request) {
   try {
     const { userId } = await requireActiveStudent(request);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Pregunta inválida." }, { status: 400 });
-    const { courseId, question } = parsed.data;
+    const { courseId, question, lessonId } = parsed.data;
     const db = getAdminDb();
     const enrollment = await db.collection("enrollments").doc(`${courseId}--${userId}`).get();
     if (!enrollment.exists || enrollment.data()?.status !== "active") return NextResponse.json({ error: "No tienes acceso a esta materia." }, { status: 403 });
@@ -21,8 +21,8 @@ export async function POST(request: Request) {
     if (!course.exists) return NextResponse.json({ error: "Materia no encontrada." }, { status: 404 });
     if (!isAiConfigured()) return NextResponse.json({ error: "El asistente no está configurado." }, { status: 503 });
     const plans = await db.collection("lessonPlans").where("teacherId", "==", course.data()?.teacherId).get();
-    const context = plans.docs.filter(p => p.data().courseId === courseId && p.data().visibleToStudents === true && (!p.data().sectionId || p.data().sectionId === enrollment.data()?.sectionId))
-      .slice(0, 8).map(p => ({ title: p.data().title, contents: p.data().contents, objectives: p.data().objectives }));
+    const context = plans.docs.filter(p => p.data().courseId === courseId && (!lessonId || p.id === lessonId) && p.data().visibleToStudents === true && (!p.data().sectionId || p.data().sectionId === enrollment.data()?.sectionId))
+      .slice(0, 8).map(p => ({ title: p.data().title, contents: p.data().contents, objectives: p.data().objectives, lessonContent: String(p.data().lessonContent || "").slice(0, 6000) }));
     if (!context.length) return NextResponse.json({ error: "El docente aún no ha publicado contenido para este asistente." }, { status: 409 });
     const day = new Date().toISOString().slice(0, 10);
     const usage = db.collection("users").doc(userId).collection("aiUsage").doc(day);

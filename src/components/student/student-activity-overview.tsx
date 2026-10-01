@@ -8,12 +8,18 @@ import { db } from "@/lib/firebase/client";
 import { useLiveQuery } from "@/lib/firebase/use-live-query";
 import { useStudentEnrollments } from "@/components/student/live-courses";
 
+type CourseProgress = { courseId: string; completedLessonIds: string[] };
+type PracticeProgress = { courseId: string; attempts: number; correctAnswers: number };
 type Grade = { studentId: string; courseId: string; status: string; assessmentTitle: string; normalizedPercentage: number; feedback: string };
 type Attendance = { studentId: string; courseId: string; status: string; date: string };
 type OnlineClass = { id: string; courseId: string; title: string; url: string; startsAt?: string; visibleToStudents?: boolean };
 export function StudentActivityOverview({ mode }: { mode: "progress" | "calendar" }) {
   const { profile } = useAuth();
   const enrolled = useStudentEnrollments();
+  const progressRef = useMemo(() => profile && mode === "progress" ? query(collection(db, "users", profile.uid, "courseProgress")) : null, [profile, mode]);
+  const practiceRef = useMemo(() => profile && mode === "progress" ? query(collection(db, "users", profile.uid, "playgroundSessions")) : null, [profile, mode]);
+  const progress = useLiveQuery<CourseProgress>(progressRef);
+  const practice = useLiveQuery<PracticeProgress>(practiceRef);
   const gradeRef = useMemo(() => profile && mode === "progress" ? query(collection(db, "grades"), where("studentId", "==", profile.uid), where("status", "==", "published")) : null, [profile, mode]);
   const attendanceRef = useMemo(() => profile && mode === "progress" ? query(collection(db, "attendance"), where("studentId", "==", profile.uid)) : null, [profile, mode]);
   const grades = useLiveQuery<Grade>(gradeRef);
@@ -37,6 +43,7 @@ export function StudentActivityOverview({ mode }: { mode: "progress" | "calendar
     <header className="rounded-3xl bg-[#071a22] p-8 text-white"><h1 className="text-3xl font-semibold">{mode === "progress" ? "Mi progreso" : "Calendario de clases"}</h1><p className="mt-2 text-white/70">Información publicada en tus materias inscritas.</p></header>
     {(enrolled.error || grades.error || attendance.error || classError) && <p role="alert">No fue posible cargar toda la información.</p>}
     {mode === "progress" ? <>
+      <section className="rounded-3xl border border-border bg-card p-6"><h2 className="text-xl font-semibold">Mi aprendizaje</h2><div className="mt-4 grid gap-3 md:grid-cols-3"><div className="rounded-xl bg-primary/10 p-4"><p className="text-3xl font-semibold">{progress.data.filter(p => ids.has(p.courseId)).reduce((n,p) => n + (p.completedLessonIds?.length || 0),0)}</p><p className="text-sm text-muted-foreground">Clases marcadas como completadas</p></div><div className="rounded-xl bg-primary/10 p-4"><p className="text-3xl font-semibold">{practice.data.filter(p => ids.has(p.courseId) && p.id.endsWith("--real")).reduce((n,p) => n + (p.attempts || 0),0)}</p><p className="text-sm text-muted-foreground">Prácticas nuevas completadas</p></div><div className="rounded-xl bg-primary/10 p-4"><p className="text-3xl font-semibold">{practice.data.filter(p => ids.has(p.courseId) && p.id.endsWith("--real")).reduce((n,p) => n + (p.correctAnswers || 0),0)}</p><p className="text-sm text-muted-foreground">Respuestas correctas</p></div></div></section>
       <section className="rounded-3xl border border-border bg-card p-6"><h2 className="text-xl font-semibold">Calificaciones publicadas</h2>{grades.data.filter(g => ids.has(g.courseId)).map(g => <article key={g.id} className="mt-3 rounded-xl border p-4"><strong>{g.assessmentTitle}</strong><p>{Number(g.normalizedPercentage).toFixed(1)}%</p>{g.feedback && <p className="text-sm text-muted-foreground">{g.feedback}</p>}</article>)}{!grades.data.length && <p className="mt-3">Todavía no tienes notas publicadas.</p>}</section>
       <section className="rounded-3xl border border-border bg-card p-6"><h2 className="text-xl font-semibold">Asistencia</h2><p className="mt-3">{attendance.data.filter(a => a.status === "present").length} presentes de {attendance.data.length} registros</p></section>
       <Link href="/student/playground" className="inline-block rounded-xl bg-teal-500 px-5 py-3 font-semibold text-slate-950">Ir al playground</Link>

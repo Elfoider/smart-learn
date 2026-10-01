@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/hooks/use-auth";
 
-export function CourseTutor({ courseId }: { courseId: string }) {
+export function CourseTutor({ courseId, lessonId }: { courseId: string; lessonId?: string }) {
   const { user } = useAuth();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -15,7 +15,7 @@ export function CourseTutor({ courseId }: { courseId: string }) {
     setLoading(true); setError(""); setAnswer("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/ai/course", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ courseId, question }) });
+      const response = await fetch("/api/ai/course", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ courseId, lessonId, question }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No fue posible responder.");
       setAnswer(payload.answer);

@@ -23,6 +23,7 @@ export interface TeacherLessonPlan {
   activities: string[];
   evaluationEvidence: string;
   notes: string;
+  lessonContent?: string;
   status: LessonPlanStatus;
   visibleToStudents: boolean;
   createdAtMs: number;
@@ -46,6 +47,7 @@ export interface LessonPlanFormValues {
   activities: string[];
   evaluationEvidence: string;
   notes: string;
+  lessonContent?: string;
   status: LessonPlanStatus;
   visibleToStudents: boolean;
 }

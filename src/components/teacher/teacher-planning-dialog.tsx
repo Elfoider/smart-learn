@@ -181,6 +181,7 @@ export function TeacherPlanningDialog({
     plan?.evaluationEvidence ?? "",
   );
 
+  const [lessonContent, setLessonContent] = useState(plan?.lessonContent ?? "");
   const [notes, setNotes] =
     useState(plan?.notes ?? "");
 
@@ -301,6 +302,7 @@ export function TeacherPlanningDialog({
           textToItems(activities),
         evaluationEvidence,
         notes,
+        lessonContent,
         status,
         visibleToStudents:
           status === "archived"
@@ -628,6 +630,11 @@ export function TeacherPlanningDialog({
             />
           </FormField>
 
+          <FormField label="Contenido de la clase para estudiantes">
+            <textarea value={lessonContent} onChange={event => setLessonContent(event.target.value)} maxLength={6000}
+              placeholder="Explicación, ejemplos y lectura de la clase. Se muestra cuando publicas la planificación. Separa los párrafos con una línea en blanco."
+              className={textareaClassName} />
+          </FormField>
           <FormField label="Observaciones docentes">
             <textarea
               value={notes}
