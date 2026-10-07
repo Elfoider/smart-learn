@@ -1,5 +1,7 @@
 "use client";
 
+import { InstitutionNotice } from "@/components/admin/institution-notice";
+
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
@@ -265,6 +267,7 @@ export function StudentShell({ children }: StudentShellProps) {
             </div>
           </div>
         </header>
+        <InstitutionNotice />
 
         <div className="mx-auto max-w-[96rem] px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10">
           {children}

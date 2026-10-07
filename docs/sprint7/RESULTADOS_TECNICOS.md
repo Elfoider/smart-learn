@@ -1,3 +1,5 @@
+> Documento de la entrega Sprint 7 RC1 anterior. La ampliación administrativa de este paquete se describe en GUIA_ADMIN.md y docs/administracion/RESULTADOS.md; sus pruebas y alcance actuales sustituyen los totales y la limitación de administración indicados aquí.
+
 # Resultados técnicos — Sprint 7 RC1
 
 Fecha: 7 de octubre de 2026. Fuente: smart-learn-sprint7-base.zip proporcionado por el usuario. Node 24.19, Next 16.2.12; reglas ejecutadas con Java 21 y Firestore Emulator 1.22.0. Sin acceso a cuentas reales y sin escrituras en producción.

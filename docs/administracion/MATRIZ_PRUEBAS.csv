@@ -1,0 +1,19 @@
+﻿ID;Área;Acción;Resultado esperado;Estado;Resultado observado;Evidencia;Evaluador;Fecha
+A01;Alta inicial;Crear cuenta adicional y ejecutar bootstrap con UID;"Acceso admin activo; perfiles de prueba conservados";PENDIENTE;;;;
+A02;Usuarios;Crear/vincular correo y recuperar contraseña desde Login;Perfil correcto y acceso por rol;PENDIENTE;;;;
+A03;Roles;"Intentar retirar propio acceso; cambiar rol con relaciones activas";Operación rechazada con explicación;PENDIENTE;;;;
+A04;Suspensión;Suspender estudiante con sesión abierta;"Pierde acceso; API y reglas rechazan consultas";PENDIENTE;;;;
+A05;Oferta;Crear materia y sección con docente activo;Visible al docente responsable;PENDIENTE;;;;
+A06;Matrículas;Llenar capacidad y matricular desde admin/docente;Capacidad y contadores consistentes;PENDIENTE;;;;
+A07;Transferencia;Reasignar materia de prueba a otro docente;Todas las relaciones pasan al nuevo responsable;PENDIENTE;;;;
+A08;Aula;Publicar clase con contenido y sección;Estudiante correspondiente la consulta y practica;PENDIENTE;;;;
+A09;Materiales;Publicar guía y enlace real de encuentro;Enlace accesible a la sección correcta;PENDIENTE;;;;
+A10;Evaluaciones;Publicar instrucciones y rúbrica manual;Estudiante consulta actividad y criterios;PENDIENTE;;;;
+A11;Notas;Publicar/corregir nota válida;Nota y ponderación correctas en estudiante/reportes;PENDIENTE;;;;
+A12;Asistencia;Marcar y corregir misma fecha;Un solo registro coherente en los portales;PENDIENTE;;;;
+A13;Reportes;Comparar reporte y CSV con notas publicadas;Promedios definidos sin incluir borradores;PENDIENTE;;;;
+A14;Configuración;Cambiar institución/período/aviso y cupo IA;Tres portales y consultas reflejan configuración;PENDIENTE;;;;
+A15;Auditoría;Revisar cambios y acceso desde otro rol;"Actor/motivo/antes/después; acceso exclusivo admin";PENDIENTE;;;;
+A16;Móvil;Probar navegación, formularios y rúbrica en teléfono;Controles legibles sin desbordamiento;PENDIENTE;;;;
+A17;Producción;Rollout activo, crear usuario y consultar IA por Funnel;Permisos IAM y conexión reales correctos;PENDIENTE;;;;
+A18;Revisión académica;Realizar demostración con docente y estudiante;Registrar observaciones y aceptación;PENDIENTE;;;;

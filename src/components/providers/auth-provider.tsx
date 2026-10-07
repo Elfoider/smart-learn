@@ -2,6 +2,7 @@
 
 import type { User } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 import {
   createContext,
   useCallback,
@@ -14,7 +15,7 @@ import {
   ensureUserProfile,
   signOutUser,
 } from "@/lib/firebase/auth-service";
-import { auth } from "@/lib/firebase/client";
+import { auth, db } from "@/lib/firebase/client";
 import type { AppUser } from "@/types/auth";
 
 interface AuthContextValue {
@@ -50,10 +51,12 @@ export function AuthProvider({
 
   useEffect(() => {
     let generation = 0;
+    let stopProfile: (() => void) | undefined;
     const unsubscribe = onAuthStateChanged(
       auth,
       async (currentUser) => {
         const ticket = ++generation;
+        stopProfile?.(); stopProfile = undefined;
         setLoading(true);
         setError(null);
 
@@ -71,6 +74,14 @@ export function AuthProvider({
           if (ticket !== generation) return;
           setUser(currentUser);
           setProfile(currentProfile);
+          stopProfile = onSnapshot(doc(db, "users", currentUser.uid), snapshot => {
+            if (ticket !== generation) return;
+            const data = snapshot.data();
+            if (!data || !["admin","teacher","student"].includes(data.role) || !["active","inactive","suspended"].includes(data.status)) {
+              setProfile(null); setError("El perfil ya no está disponible."); return;
+            }
+            setProfile({ ...currentProfile, name: typeof data.name === "string" ? data.name : currentProfile.name, role: data.role, status: data.status });
+          }, () => { if (ticket === generation) { setProfile(null); setError("No fue posible verificar los cambios de acceso."); } });
         } catch (currentError) {
           if (ticket !== generation) return;
           console.error(
@@ -89,7 +100,7 @@ export function AuthProvider({
       },
     );
 
-    return () => { generation++; unsubscribe(); };
+    return () => { generation++; stopProfile?.(); unsubscribe(); };
   }, []);
 
   const refreshProfile =

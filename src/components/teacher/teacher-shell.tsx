@@ -1,5 +1,7 @@
 "use client";
 
+import { InstitutionNotice } from "@/components/admin/institution-notice";
+
 import type {
   LucideIcon,
 } from "lucide-react";
@@ -259,6 +261,7 @@ export function TeacherShell({
             </div>
           </div>
         </header>
+        <InstitutionNotice />
 
         <main className="px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-8">
           <div className="mx-auto w-full max-w-[100rem]">
@@ -414,7 +417,7 @@ function TeacherSidebarContent({
             </p>
 
             <p className="mt-1 text-[0.65rem] text-secondary-foreground/65">
-              Período académico 2026-III
+              Gestión académica
             </p>
           </div>
         </div>

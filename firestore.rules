@@ -48,7 +48,8 @@ service cloud.firestore {
       allow create: if owner(uid) && request.resource.data.keys().hasOnly(['uid','name','email','role','status','photoURL','createdAt','updatedAt'])
         && request.resource.data.uid == uid && request.resource.data.role == 'student'
         && request.resource.data.status == 'active' && request.resource.data.email == request.auth.token.email;
-      allow update, delete: if active('admin');
+      // Los cambios administrativos pasan por API validada y auditoría.
+      allow update, delete: if false;
       match /courseProgress/{id} { allow read, write: if owner(uid) && active('student'); }
       match /lessonNotes/{id} { allow read, write: if owner(uid) && active('student'); }
       match /playgroundSessions/{id} {
@@ -87,21 +88,21 @@ service cloud.firestore {
       allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || (owner(resource.data.studentId) && active('student')) || active('admin');
     }
     match /lessonPlans/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid)
         || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
       allow create: if teacherWrite() && teaches(request.resource.data.courseId) && validSection(request.resource.data);
       allow update: if teacherUpdate();
       allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
     }
     match /assessments/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid)
         || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
       allow create: if teacherWrite() && teaches(request.resource.data.courseId) && validSection(request.resource.data);
       allow update: if teacherUpdate();
       allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
     }
     match /grades/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid)
         || (owner(resource.data.studentId) && active('student') && resource.data.status == 'published');
       allow create: if teacherWrite() && teaches(request.resource.data.courseId)
         && validGrade(request.resource.data);
@@ -109,26 +110,30 @@ service cloud.firestore {
         && request.resource.data.assessmentId == resource.data.assessmentId && validGrade(request.resource.data);
     }
     match /materials/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid)
         || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
       allow create: if teacherWrite() && teaches(request.resource.data.courseId) && validSection(request.resource.data);
       allow update: if teacherUpdate();
       allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
     }
     match /onlineClasses/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid)
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid)
         || (enrolledInSection(resource.data.courseId, resource.data.sectionId) && resource.data.visibleToStudents == true);
       allow create: if teacherWrite() && teaches(request.resource.data.courseId) && validSection(request.resource.data);
       allow update: if teacherUpdate();
       allow delete: if active('teacher') && resource.data.teacherId == request.auth.uid;
     }
     match /attendance/{id} {
-      allow read: if (active('teacher') && resource.data.teacherId == request.auth.uid) || (owner(resource.data.studentId) && active('student'));
+      allow read: if active('admin') || (active('teacher') && resource.data.teacherId == request.auth.uid) || (owner(resource.data.studentId) && active('student'));
       allow create: if teacherWrite() && teaches(request.resource.data.courseId)
         && validSection(request.resource.data) && validEnrollment(request.resource.data);
       allow update: if teacherUpdate() && request.resource.data.studentId == resource.data.studentId && validEnrollment(request.resource.data);
     }
     match /aiLogs/{id} { allow read: if active('admin'); }
+    match /adminAudit/{id} { allow read: if active('admin'); }
+    match /systemSettings/{id} {
+      allow read: if id == 'general' && (active('admin') || active('teacher') || active('student'));
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }

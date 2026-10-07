@@ -153,3 +153,39 @@ test("new OAuth profile can only create an active student matching its identity"
   await assertFails(db.doc('users/newstudent').set({...data,email:'other@example.test'}));
   await assertSucceeds(db.doc('users/newstudent').set(data));
 });
+
+test("admin reads academic records but cannot bypass audited server mutations", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context=>{
+    const db=context.firestore();
+    await db.doc('users/admin1').set({role:'admin',status:'active'});
+    await db.doc('adminAudit/entry').set({actorId:'admin1',reason:'Cambio de prueba'});
+    await db.doc('systemSettings/general').set({institutionName:'Universidad',dailyAiLimit:50});
+    await db.doc('lessonPlans/admin-view').set({teacherId:'teacher1',courseId:'course1',sectionId:null,visibleToStudents:false});
+    await db.doc('attendance/admin-view').set({teacherId:'teacher1',studentId:'student1',courseId:'course1'});
+  });
+  const db=e.authenticatedContext('admin1').firestore();
+  for(const name of ['users','courses','sections','enrollments','lessonPlans','materials','assessments','grades','attendance','onlineClasses','adminAudit','aiLogs'])await assertSucceeds(db.collection(name).get());
+  await assertSucceeds(db.doc('systemSettings/general').get());
+  for(const [path,patch]of [['users/student1',{role:'admin'}],['courses/course1',{teacherId:'admin1'}],['materials/material1',{title:'Sin auditar'}],['systemSettings/general',{dailyAiLimit:200}],['adminAudit/entry',{reason:'Alterado'}]])await assertFails(db.doc(path).update(patch));
+  await assertFails(db.doc('users/student1').delete());
+});
+test("academic users read general settings but never administrative audit/control", async () => {
+  const e=await setup();
+  for(const uid of ['student1','teacher1']) {
+    const db=e.authenticatedContext(uid).firestore();
+    await assertSucceeds(db.doc('systemSettings/general').get());
+    await assertFails(db.doc('adminAudit/entry').get());
+    await assertFails(db.doc('adminControl/writes').get());
+    await assertFails(db.doc('systemSettings/private').get());
+    await assertFails(db.doc('systemSettings/general').update({announcement:'Texto no autorizado'}));
+  }
+  await assertFails(e.unauthenticatedContext().firestore().doc('systemSettings/general').get());
+});
+test("suspended administrator loses global reads and administrative audit access", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context=>{await context.firestore().doc('users/admin-suspended').set({role:'admin',status:'suspended'});});
+  const db=e.authenticatedContext('admin-suspended').firestore();
+  for(const name of ['users','courses','materials','grades','adminAudit','aiLogs'])await assertFails(db.collection(name).get());
+  await assertFails(db.doc('systemSettings/general').get());
+});

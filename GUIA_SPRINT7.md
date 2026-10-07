@@ -1,3 +1,5 @@
+> Documento de la entrega Sprint 7 RC1 anterior. La ampliación administrativa de este paquete se describe en GUIA_ADMIN.md y docs/administracion/RESULTADOS.md; sus pruebas y alcance actuales sustituyen los totales y la limitación de administración indicados aquí.
+
 # Sprint 7 — Smart Learn, candidata RC1
 
 Código actualizado y pruebas técnicas completas. El cierre de aceptación requiere repetir los recorridos con tus usuarios, Ollama y Firebase App Hosting. No se hicieron escrituras en tu Firebase ni se publicó código desde este entorno.

@@ -1,4 +1,4 @@
-import { getDailyAiLimit } from "@/lib/ai/limits";
+import { consumeAiUsage } from "@/lib/server/ai-usage";
 import { readRequestJson, RequestInputError } from "@/lib/server/request-validation";
 import {
   FieldValue,
@@ -165,86 +165,6 @@ function getBearerToken(
     .trim();
 
   return token || null;
-}
-
-async function consumeDailyQuota(
-  userId: string,
-) {
-  const db = getAdminDb();
-  const limit = getDailyAiLimit();
-
-  const dateKey =
-    new Date()
-      .toISOString()
-      .slice(0, 10);
-
-  const usageReference = db
-    .collection("users")
-    .doc(userId)
-    .collection("aiUsage")
-    .doc(dateKey);
-
-  const result =
-    await db.runTransaction(
-      async (transaction) => {
-        const snapshot =
-          await transaction.get(
-            usageReference,
-          );
-
-        const currentValue =
-          snapshot.data()?.count;
-
-        const currentCount =
-          typeof currentValue ===
-            "number" &&
-          Number.isFinite(currentValue)
-            ? currentValue
-            : 0;
-
-        if (
-          currentCount >= limit
-        ) {
-          return {
-            allowed: false,
-            count: currentCount,
-            limit,
-          };
-        }
-
-        const nextCount =
-          currentCount + 1;
-
-        transaction.set(
-          usageReference,
-          {
-            date: dateKey,
-            count: nextCount,
-            limit,
-            updatedAt:
-              FieldValue.serverTimestamp(),
-          },
-          {
-            merge: true,
-          },
-        );
-
-        return {
-          allowed: true,
-          count: nextCount,
-          limit,
-        };
-      },
-    );
-
-  return {
-    ...result,
-    remaining: Math.max(
-      result.limit -
-        result.count,
-      0,
-    ),
-  };
 }
 
 async function saveAiLog({
@@ -439,7 +359,7 @@ export async function POST(
     };
 
     const quota =
-      await consumeDailyQuota(
+      await consumeAiUsage(
         decodedToken.uid,
       );
 

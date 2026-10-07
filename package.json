@@ -7,15 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:rules": "node --test tests/firestore.rules.test.mjs",
+    "test:rules": "node --test tests/firestore.rules.test.mjs tests/admin-emulator.test.mjs",
     "local-ai": "node --env-file=local-ai/.env local-ai/server.mjs",
     "test:ai": "node --test tests/local-ai.test.mjs tests/ai-provider.test.mjs",
     "test:practice": "node --test tests/practice.test.mjs tests/demo-content.test.mjs",
     "demo:preview": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs",
     "demo:load": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs --apply",
     "test:integration": "node --experimental-test-module-mocks --test tests/api-workflows.test.mjs tests/sprint7-core.test.mjs",
-    "test": "npm run test:practice && npm run test:ai && npm run test:integration",
-    "typecheck": "tsc --noEmit"
+    "test": "npm run test:practice && npm run test:ai && npm run test:integration && npm run test:admin",
+    "typecheck": "tsc --noEmit",
+    "test:admin": "node --experimental-test-module-mocks --test tests/admin.test.mjs",
+    "admin:bootstrap": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.14.0",

@@ -233,6 +233,13 @@ export async function createTeacherEnrollment(
       );
     }
 
+    if (course?.status !== "active") throw new EnrollmentAdminError("enrollment/inactive-course", "La materia debe estar activa.", 409);
+    const occupied = await transaction.get(db.collection("enrollments").where("sectionId", "==", input.sectionId));
+    const capacity = typeof section.capacity === "number" && section.capacity > 0 ? section.capacity : 30;
+    if (occupied.docs.filter(doc => doc.data().status === "active" && doc.id !== enrollmentId).length >= capacity) {
+      throw new EnrollmentAdminError("enrollment/full-section", "La sección alcanzó su capacidad.", 409);
+    }
+
     const previousEnrollment = enrollmentSnapshot.exists
       ? enrollmentSnapshot.data()
       : null;
@@ -364,31 +371,25 @@ export async function updateTeacherEnrollment(
 
     const nextStatus = input.status ?? previousEnrollment.status;
 
-    if (nextSectionId !== previousEnrollment.sectionId || input.sectionId) {
-      const sectionReference = db.collection("sections").doc(nextSectionId);
-
-      const sectionSnapshot = await transaction.get(sectionReference);
-
-      if (!sectionSnapshot.exists) {
-        throw new EnrollmentAdminError(
-          "enrollment/section-not-found",
-          "La sección seleccionada no existe.",
-          404,
-        );
+    const sectionSnapshot = await transaction.get(db.collection("sections").doc(nextSectionId));
+    const section = sectionSnapshot.data();
+    if (!sectionSnapshot.exists || section?.teacherId !== teacherId || section?.courseId !== previousEnrollment.courseId) {
+      throw new EnrollmentAdminError("enrollment/invalid-section", "La sección no pertenece a esta asignatura.", 409);
+    }
+    if (nextStatus === "active") {
+      const student = (await transaction.get(db.collection("users").doc(previousEnrollment.studentId))).data();
+      if (student?.role !== "student" || student?.status !== "active" || section.status !== "active" || courseSnapshot.data()?.status !== "active") {
+        throw new EnrollmentAdminError("enrollment/inactive-record", "Materia, sección y estudiante deben estar activos.", 409);
       }
-
-      const section = sectionSnapshot.data();
-
-      if (
-        section?.teacherId !== teacherId ||
-        section?.courseId !== previousEnrollment.courseId
-      ) {
-        throw new EnrollmentAdminError(
-          "enrollment/invalid-section",
-          "La sección no pertenece a esta asignatura.",
-          403,
-        );
+      const occupied = await transaction.get(db.collection("enrollments").where("sectionId", "==", nextSectionId));
+      const capacity = typeof section.capacity === "number" && section.capacity > 0 ? section.capacity : 30;
+      if (occupied.docs.filter(doc => doc.data().status === "active" && doc.id !== previousEnrollment.id).length >= capacity) {
+        throw new EnrollmentAdminError("enrollment/full-section", "La sección alcanzó su capacidad.", 409);
       }
+    }
+    if (nextSectionId !== previousEnrollment.sectionId) {
+      const history = await Promise.all(["grades", "attendance"].map(name => transaction.get(db.collection(name).where("courseId", "==", previousEnrollment.courseId).where("studentId", "==", previousEnrollment.studentId).limit(1))));
+      if (history.some(snapshot => snapshot.docs.length)) throw new EnrollmentAdminError("enrollment/has-history", "La matrícula tiene notas o asistencia. Conserva su sección.", 409);
     }
 
     const wasActive = previousEnrollment.status === "active";
