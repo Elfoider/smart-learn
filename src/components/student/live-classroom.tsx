@@ -35,13 +35,13 @@ export function LiveClassroom({ courseId }: { courseId: string }) {
   const sharedMaterials = useLiveQuery<Resource>(sharedMaterialsRef);
   const sharedClasses = useLiveQuery<Resource>(sharedClassesRef);
   const sharedPlans = useLiveQuery<Plan>(sharedPlansRef);
-  if (enrolled.loading || course.loading) return <p>Cargando salón…</p>;
+  if (enrolled.loading || course.loading || progress.loading) return <p>Cargando salón…</p>;
   if (!enrollment) return <div role="alert" className="rounded-2xl border p-6">No tienes una inscripción activa en esta materia. <Link className="underline" href="/student/courses">Mis materias</Link></div>;
   const subject = course.data[0];
   if (!subject) return <p role="alert">La materia no está disponible.</p>;
   const inSection = (item: { sectionId?: string | null }) => !item.sectionId || item.sectionId === enrollment.sectionId;
   const validUrl = (url: string) => { try { return ["https:", "http:"].includes(new URL(url).protocol); } catch { return false; } };
-  const ordered = [...plans.data, ...sharedPlans.data].filter(inSection)
+  const ordered = [...new Map([...plans.data, ...sharedPlans.data].map(item => [item.id, item])).values()].filter(inSection)
     .sort((a,b) => (a.unit || "").localeCompare(b.unit || "", "es", { numeric: true }) || (a.startDate || "").localeCompare(b.startDate || "") || a.title.localeCompare(b.title));
   const selected = ordered.find(p => p.id === progress.currentLessonId) || ordered[0];
   const groups = [...new Set(ordered.map(p => p.unit || "Contenido"))];
@@ -72,7 +72,7 @@ export function LiveClassroom({ courseId }: { courseId: string }) {
             <div className="min-h-72 p-6 md:p-9"><p className="text-xs uppercase tracking-widest text-muted-foreground">Sección {step + 1} de {sections.length}</p><h3 className="mt-3 text-xl font-semibold">{sections[step].title}</h3><div className="mt-6 space-y-5">{sections[step].paragraphs.map((text,index) => <p key={index} className="whitespace-pre-wrap leading-8">{text}</p>)}</div></div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-5"><button type="button" disabled={step === 0} onClick={() => setStep(v => v - 1)} className="flex items-center gap-1 text-sm disabled:opacity-30"><ChevronLeft size={17} />Anterior</button><button type="button" disabled={step === 3} onClick={() => setStep(v => v + 1)} className="flex items-center gap-1 text-sm disabled:opacity-30">Siguiente<ChevronRight size={17} /></button></div>
           </article>
-          <div className="flex flex-wrap gap-3"><button type="button" disabled={progress.saving} onClick={() => void progress.toggleLessonCompleted(selected.id)} className="rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold">{progress.completedLessonIds.includes(selected.id) ? "Marcar como pendiente" : "Marcar clase completada"}</button><Link href={`/student/playground?courseId=${encodeURIComponent(courseId)}&lessonId=${encodeURIComponent(selected.id)}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Sparkles size={17} />Practicar esta clase</Link></div>
+          <div className="flex flex-wrap gap-3"><button type="button" disabled={progress.saving || progress.loading} onClick={() => void progress.toggleLessonCompleted(selected.id)} className="rounded-xl border border-border bg-card px-5 py-3 text-sm font-semibold">{progress.completedLessonIds.includes(selected.id) ? "Marcar como pendiente" : "Marcar clase completada"}</button><Link href={`/student/playground?courseId=${encodeURIComponent(courseId)}&lessonId=${encodeURIComponent(selected.id)}`} className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground"><Sparkles size={17} />Practicar esta clase</Link></div>
           <LessonNotes key={selected.id} courseId={courseId} lessonId={selected.id} />
           <CourseTutor key={`tutor-${selected.id}`} courseId={courseId} lessonId={selected.id} />
         </>}

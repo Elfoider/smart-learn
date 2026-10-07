@@ -49,9 +49,11 @@ export function AuthProvider({
     useState<string | null>(null);
 
   useEffect(() => {
+    let generation = 0;
     const unsubscribe = onAuthStateChanged(
       auth,
       async (currentUser) => {
+        const ticket = ++generation;
         setLoading(true);
         setError(null);
 
@@ -66,9 +68,11 @@ export function AuthProvider({
           const currentProfile =
             await ensureUserProfile(currentUser);
 
+          if (ticket !== generation) return;
           setUser(currentUser);
           setProfile(currentProfile);
         } catch (currentError) {
+          if (ticket !== generation) return;
           console.error(
             "No fue posible cargar el perfil:",
             currentError,
@@ -80,12 +84,12 @@ export function AuthProvider({
             "No fue posible cargar el perfil del usuario.",
           );
         } finally {
-          setLoading(false);
+          if (ticket === generation) setLoading(false);
         }
       },
     );
 
-    return unsubscribe;
+    return () => { generation++; unsubscribe(); };
   }, []);
 
   const refreshProfile =
@@ -98,6 +102,7 @@ export function AuthProvider({
       const updatedProfile =
         await ensureUserProfile(user);
 
+      if (auth.currentUser?.uid !== user.uid) return null;
       setProfile(updatedProfile);
 
       return updatedProfile;

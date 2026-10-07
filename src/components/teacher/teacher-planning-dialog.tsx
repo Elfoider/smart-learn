@@ -635,7 +635,7 @@ export function TeacherPlanningDialog({
               placeholder="Explicación, ejemplos y lectura de la clase. Se muestra cuando publicas la planificación. Separa los párrafos con una línea en blanco."
               className={textareaClassName} />
           </FormField>
-          <FormField label="Observaciones docentes">
+          <FormField label="Observaciones de planificación (sin datos personales)">
             <textarea
               value={notes}
               onChange={(event) => {

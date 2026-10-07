@@ -6,7 +6,7 @@ let env;
 async function setup() {
   if (!env) {
     env = await initializeTestEnvironment({
-      projectId: "smart-learn-rules-local",
+      projectId: "demo-smart-learn",
       firestore: { rules: readFileSync("firestore.rules", "utf8"), host: "127.0.0.1", port: 8080 },
     });
     await env.withSecurityRulesDisabled(async context => {
@@ -52,4 +52,104 @@ test("teacher may publish own material but cannot take over another course", asy
 test("unauthenticated users cannot access records", async () => {
   const e = await setup(); const db = e.unauthenticatedContext().firestore();
   await assertFails(db.doc("courses/course1").get());
+});
+
+test("active exam answers persist, but score, start time and attempt identity cannot change", async () => {
+  const e = await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    await context.firestore().doc('users/student1/examAttempts/active').set({ status:'active', userId:'student1', examId:'demo', startedAt:new Date(), startedAtMs:Date.now(), durationSeconds:600, remainingSeconds:600, answers:{}, flaggedQuestionIds:[], currentQuestionIndex:0, result:null });
+  });
+  const db=e.authenticatedContext('student1').firestore();const attempt=db.doc('users/student1/examAttempts/active');
+  await assertSucceeds(attempt.update({ answers:{q1:'a'},remainingSeconds:590 }));
+  await assertFails(attempt.update({ result:{score:100} }));
+  await assertFails(attempt.update({ startedAt:new Date() }));
+  await assertFails(attempt.update({ status:'submitted' }));
+  await assertFails(attempt.update({ remainingSeconds:999999 }));
+  await assertFails(attempt.update({ remainingSeconds:-1 }));
+  await assertFails(e.authenticatedContext('student2').firestore().doc('users/student1/examAttempts/active').get());
+});
+test("expired or submitted exams reject new answers", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    const db=context.firestore();
+    const data={status:'active',durationSeconds:1,startedAt:new Date(Date.now()-10000),remainingSeconds:0,answers:{},flaggedQuestionIds:[],currentQuestionIndex:0};
+    await db.doc('users/student1/examAttempts/expired').set(data);
+    await db.doc('users/student1/examAttempts/submitted').set({...data,status:'submitted'});
+  });
+  const db=e.authenticatedContext('student1').firestore();
+  await assertFails(db.doc('users/student1/examAttempts/expired').update({answers:{q1:'a'}}));
+  await assertFails(db.doc('users/student1/examAttempts/submitted').update({answers:{q1:'a'}}));
+});
+test("real practice counters and private solutions are server-only", async () => {
+  const e=await setup();const db=e.authenticatedContext('student1').firestore();
+  await assertFails(db.doc('users/student1/playgroundSessions/course1--real').set({attempts:99,correctAnswers:99}));
+  await assertFails(db.doc('users/student1/practiceChallenges/secret').get());
+  await assertFails(db.doc('users/student1/practiceChallenges/secret').set({correctIndex:0}));
+  await assertFails(db.doc('users/student1/aiUsage/today').set({count:0}));
+  await assertSucceeds(db.doc('users/student1/playgroundSessions/demo--topic').set({attempts:1,correctAnswers:1}));
+});
+test("student may read shared published assessment and rubric, never drafts or another section", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    const db=context.firestore();const data={teacherId:'teacher1',courseId:'course1',sectionId:null,visibleToStudents:true,rubric:[{title:'Comprensión',points:10}]};
+    await db.doc('assessments/shared').set(data);
+    await db.doc('assessments/hidden').set({...data,visibleToStudents:false});
+    await db.doc('assessments/other-section').set({...data,sectionId:'section2'});
+  });
+  const db=e.authenticatedContext('student1').firestore();
+  await assertSucceeds(db.doc('assessments/shared').get());
+  await assertFails(db.doc('assessments/hidden').get());
+  await assertFails(db.doc('assessments/other-section').get());
+  await assertSucceeds(db.collection('assessments').where('courseId','==','course1').where('sectionId','==',null).where('visibleToStudents','==',true).get());
+});
+test("teacher cannot attach another course's section or change resource owner/course", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    const db=context.firestore();
+    await db.doc('courses/course2').set({teacherId:'teacher2'});
+    await db.doc('sections/section1').set({teacherId:'teacher1',courseId:'course1'});
+    await db.doc('sections/section2').set({teacherId:'teacher2',courseId:'course2'});
+  });
+  const db=e.authenticatedContext('teacher1').firestore();
+  await assertFails(db.doc('materials/material1').update({sectionId:'section2'}));
+  await assertFails(db.doc('materials/material1').update({courseId:'course2'}));
+  await assertFails(db.doc('materials/material1').update({teacherId:'teacher2'}));
+  await assertFails(db.collection('materials').add({teacherId:'teacher1',courseId:'course1',sectionId:'section2',visibleToStudents:true}));
+  await assertSucceeds(db.doc('materials/material1').update({title:'Guía revisada'}));
+});
+test("grades require matching course, section, enrollment and assessment", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    const db=context.firestore();
+    await db.doc('sections/section1').set({teacherId:'teacher1',courseId:'course1'});
+    await db.doc('assessments/assessment1').set({teacherId:'teacher1',courseId:'course1',sectionId:'section1',visibleToStudents:true});
+    await db.doc('assessments/foreign').set({teacherId:'teacher2',courseId:'course2',sectionId:'section2',visibleToStudents:true});
+  });
+  const db=e.authenticatedContext('teacher1').firestore();
+  const data={teacherId:'teacher1',courseId:'course1',sectionId:'section1',studentId:'student1',enrollmentId:'course1--student1',assessmentId:'assessment1',score:17,maxScore:20,status:'published'};
+  await assertSucceeds(db.doc('grades/valid').set(data));
+  await assertFails(db.doc('grades/mismatch').set({...data,assessmentId:'foreign'}));
+  await assertFails(db.doc('grades/mismatch').set({...data,enrollmentId:'course2--student1'}));
+  await assertFails(db.doc('grades/mismatch').set({...data,studentId:'student2'}));
+  await assertFails(db.doc('grades/valid').update({score:21}));
+  await assertSucceeds(e.authenticatedContext('student1').firestore().doc('grades/valid').get());
+});
+test("suspended profiles cannot read grades, attendance or enrollments", async () => {
+  const e=await setup();
+  await e.withSecurityRulesDisabled(async context => {
+    const db=context.firestore();
+    await db.doc('users/suspended').set({role:'student',status:'suspended'});
+    await db.doc('grades/suspended').set({studentId:'suspended',teacherId:'teacher1',status:'published'});
+    await db.doc('attendance/suspended').set({studentId:'suspended',teacherId:'teacher1'});
+    await db.doc('enrollments/suspended').set({studentId:'suspended',teacherId:'teacher1'});
+  });
+  const db=e.authenticatedContext('suspended').firestore();
+  for (const path of ['grades/suspended','attendance/suspended','enrollments/suspended']) await assertFails(db.doc(path).get());
+});
+test("new OAuth profile can only create an active student matching its identity", async () => {
+  const e=await setup();const db=e.authenticatedContext('newstudent',{email:'new@example.test'}).firestore();
+  const data={uid:'newstudent',name:'Nuevo',email:'new@example.test',role:'student',status:'active'};
+  await assertFails(db.doc('users/newstudent').set({...data,role:'admin'}));
+  await assertFails(db.doc('users/newstudent').set({...data,email:'other@example.test'}));
+  await assertSucceeds(db.doc('users/newstudent').set(data));
 });

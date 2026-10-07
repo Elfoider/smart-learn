@@ -13,10 +13,10 @@ export async function getPublishedLessons(userId: string, courseId: string) {
     return p.courseId === courseId && p.visibleToStudents === true && (!p.sectionId || p.sectionId === enrollment.data()?.sectionId);
   }).map(doc => {
     const p = doc.data();
-    const strings = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 12) : [];
+    const strings = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 4).map(text => text.slice(0, 400)) : [];
     return { id: doc.id, title: String(p.title || "Clase"), unit: String(p.unit || "Unidad"),
       startDate: String(p.startDate || ""), objectives: strings(p.objectives), contents: strings(p.contents),
-      lessonContent: String(p.lessonContent || "").slice(0, 6000) };
+      lessonContent: String(p.lessonContent || "").slice(0, 4000) };
   }).sort((a,b) => a.unit.localeCompare(b.unit, "es", { numeric: true }) || a.startDate.localeCompare(b.startDate) || a.title.localeCompare(b.title));
   return { course, enrollment, lessons };
 }

@@ -1,3 +1,6 @@
+import { consumeAiUsage } from "@/lib/server/ai-usage";
+import { aiFailure } from "@/lib/ai/errors";
+import { documentId, readRequestJson, RequestInputError } from "@/lib/server/request-validation";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -10,7 +13,7 @@ import { challengeSchema, parseChallenge, publicChallenge } from "@/lib/practice
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const schema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("generate"), courseId: z.string().min(1).max(150), lessonId: z.string().min(1).max(150),
+  z.object({ action: z.literal("generate"), courseId: documentId, lessonId: documentId,
     difficulty: z.enum(["basico", "intermedio", "avanzado"]).default("basico") }),
   z.object({ action: z.literal("submit"), challengeId: z.string().uuid(), answer: z.enum(["0", "1", "2", "3"]) }),
 ]);
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
   try {
     const { userId } = await requireActiveStudent(request);
     const courseId = new URL(request.url).searchParams.get("courseId") || "";
-    if (!courseId || courseId.length > 150) return fail("Materia inválida.", 400);
+    if (!documentId.safeParse(courseId).success) return fail("Materia inválida.", 400);
     const { lessons } = await getPublishedLessons(userId, courseId);
     const docs = (await recentItems(userId)).filter(doc => doc.data().courseId === courseId);
     const history = docs.filter(doc => doc.data().completed).slice(0, 10).map(doc => ({ id: doc.id,
@@ -34,6 +37,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ lessons: lessons.map(({ id, title, unit }) => ({ id, title, unit })), history,
       pending: parsed?.success && pending ? publicChallenge(pending.id, parsed.data) : null });
   } catch (error) {
+    if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: 400 });
     if (error instanceof StudentApiError) return fail(error.message, error.status);
     return fail("No fue posible cargar las prácticas.", 500);
   }
@@ -41,7 +45,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { userId } = await requireActiveStudent(request);
-    const parsed = schema.safeParse(await request.json());
+    const parsed = schema.safeParse(await readRequestJson(request));
     if (!parsed.success) return fail("Datos de práctica inválidos.", 400);
     const db = getAdminDb();
     if (parsed.data.action === "submit") {
@@ -75,15 +79,8 @@ export async function POST(request: Request) {
     const lesson = lessons.find(item => item.id === lessonId);
     if (!lesson) return fail("Selecciona una clase publicada.", 404);
     if (!isAiConfigured()) return fail("El asistente no está configurado.", 503);
-    const usage = db.collection("users").doc(userId).collection("aiUsage").doc(new Date().toISOString().slice(0, 10));
-    const limit = Math.min(200, Math.max(1, Number(process.env.AI_DAILY_LIMIT) || 50));
-    const allowed = await db.runTransaction(async tx => {
-      const count = (await tx.get(usage)).data()?.count || 0;
-      if (count >= limit) return false;
-      tx.set(usage, { count: count + 1, limit, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-      return true;
-    });
-    if (!allowed) return fail("Límite diario de IA alcanzado.", 429);
+    const quota = await consumeAiUsage(userId);
+    if (!quota.allowed) return fail("Límite diario de IA alcanzado.", 429);
     const recent = (await recentItems(userId)).filter(doc => doc.data().courseId === courseId).slice(0, 20)
       .map(doc => String(doc.data().question)).filter(Boolean);
     // Variación independiente por solicitud; alternativas barajadas antes de guardar.
@@ -104,10 +101,11 @@ export async function POST(request: Request) {
     await db.collection("users").doc(userId).collection("practiceChallenges").doc(id).set({ ...item, createdAt: FieldValue.serverTimestamp() });
     await db.collection("aiLogs").add({ userId, role: "student", feature: "live-practice", action: "generate", courseId, lessonId,
       provider: generated.provider, model: generated.model, createdAt: FieldValue.serverTimestamp() });
-    return NextResponse.json(publicChallenge(id, item));
+    return NextResponse.json({ ...publicChallenge(id, item), remaining: quota.remaining });
   } catch (error) {
+    if (error instanceof RequestInputError) return fail(error.message, 400);
     if (error instanceof StudentApiError) return fail(error.message, error.status);
-    console.error("Error práctica IA:", error instanceof Error ? error.message : "practice/error");
-    return fail("No fue posible procesar la práctica. Comprueba que la IA local esté en línea.", 503);
+    const failure = aiFailure(error);
+    return fail(failure.message, failure.status);
   }
 }

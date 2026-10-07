@@ -1,3 +1,4 @@
+import { documentId, readRequestJson, RequestInputError } from "@/lib/server/request-validation";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -15,11 +16,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const submitExamSchema = z.object({
-  attemptId: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200),
+  attemptId: documentId,
 
   submissionReason: z.enum([
     "manual",
@@ -64,7 +61,7 @@ export async function POST(
         request,
       );
 
-    const body = await request.json();
+    const body = await readRequestJson(request);
 
     const parsed =
       submitExamSchema.safeParse(
@@ -93,6 +90,7 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: 400 });
     if (
       error instanceof
       StudentApiError

@@ -27,7 +27,7 @@ export async function generateMetadata({
 
   if (!course) {
     return {
-      title: "Materia no encontrada",
+      title: "Salón virtual",
     };
   }
 
@@ -44,7 +44,7 @@ export default async function CoursePage({
   const course = getLearningCourse(courseId);
 
   if (!course) {
-    return <LiveClassroom courseId={courseId} />;
+    return <LiveClassroom key={courseId} courseId={courseId} />;
   }
 
   return (

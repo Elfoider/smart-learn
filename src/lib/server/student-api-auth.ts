@@ -82,7 +82,7 @@ export async function requireActiveStudent(
     profile?.status !== "active"
   ) {
     throw new StudentApiError(
-      "Tu perfil no tiene acceso a esta evaluación.",
+      "Tu perfil no tiene acceso a esta función.",
       403,
     );
   }

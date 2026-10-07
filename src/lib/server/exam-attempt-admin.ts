@@ -1,3 +1,4 @@
+import { remainingExamSeconds } from "@/lib/exams/exam-clock";
 import {
   FieldValue,
   type DocumentData,
@@ -295,7 +296,7 @@ export async function startExamForStudent(
             "active"
           ) {
             return {
-              attempt: activeAttempt,
+              attempt: { ...activeAttempt, remainingSeconds: remainingExamSeconds(activeAttempt.startedAtMs, activeAttempt.durationSeconds) },
               progress:
                 currentProgress,
             };
@@ -468,17 +469,19 @@ export async function submitExamForStudent(
           attempt.answers,
         );
 
+      const remainingSeconds = remainingExamSeconds(attempt.startedAtMs, attempt.durationSeconds);
+      const actualReason = remainingSeconds === 0 ? "time-expired" : submissionReason;
       const submittedAttempt:
         ExamAttemptRecord = {
           ...attempt,
           status: "submitted",
           remainingSeconds:
-            submissionReason ===
+            actualReason ===
             "time-expired"
               ? 0
-              : attempt.remainingSeconds,
+              : remainingSeconds,
           result,
-          submissionReason,
+          submissionReason: actualReason,
         };
 
       const previousBest =
@@ -510,7 +513,7 @@ export async function submitExamForStudent(
           remainingSeconds:
             submittedAttempt.remainingSeconds,
           result,
-          submissionReason,
+          submissionReason: actualReason,
           submittedAt:
             FieldValue.serverTimestamp(),
           updatedAt:

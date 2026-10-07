@@ -1,3 +1,5 @@
+import { getDailyAiLimit } from "@/lib/ai/limits";
+import { readRequestJson, RequestInputError } from "@/lib/server/request-validation";
 import {
   FieldValue,
 } from "firebase-admin/firestore";
@@ -142,29 +144,6 @@ const tutorRequestSchema =
       .default([]),
   });
 
-function getDailyLimit() {
-  const configuredLimit = Number(
-    process.env.AI_DAILY_LIMIT ??
-      "50",
-  );
-
-  if (
-    !Number.isFinite(
-      configuredLimit,
-    )
-  ) {
-    return 50;
-  }
-
-  return Math.max(
-    5,
-    Math.min(
-      200,
-      Math.trunc(configuredLimit),
-    ),
-  );
-}
-
 function getBearerToken(
   request: Request,
 ) {
@@ -192,7 +171,7 @@ async function consumeDailyQuota(
   userId: string,
 ) {
   const db = getAdminDb();
-  const limit = getDailyLimit();
+  const limit = getDailyAiLimit();
 
   const dateKey =
     new Date()
@@ -401,7 +380,7 @@ export async function POST(
     }
 
     const requestBody =
-      await request.json();
+      await readRequestJson(request);
 
     const parsed =
       tutorRequestSchema.safeParse(
@@ -509,6 +488,7 @@ export async function POST(
         generated.fallbackReason,
     });
   } catch (error) {
+    if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error(
       "Error en Smart Tutor:",
       error,

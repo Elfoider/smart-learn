@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { remainingExamSeconds } from "@/lib/exams/exam-clock";
 
 import type {
   ExamAnswer,
@@ -144,10 +145,10 @@ export function useExamAttempt(
                 remainingSeconds:
                   Math.min(
                     current.remainingSeconds,
-                    nextAttempt.remainingSeconds,
+                    remainingExamSeconds(nextAttempt.startedAtMs, nextAttempt.durationSeconds),
                   ),
               }
-            : nextAttempt;
+            : { ...nextAttempt, remainingSeconds: remainingExamSeconds(nextAttempt.startedAtMs, nextAttempt.durationSeconds) };
 
         attemptRef.current =
           mergedAttempt;
@@ -371,7 +372,7 @@ export function useExamAttempt(
     setSubmitting(true);
 
     try {
-      await saveExamAttemptPatch(
+      if (remainingExamSeconds(current.startedAtMs, current.durationSeconds) > 0) await saveExamAttemptPatch(
         user.uid,
         current.attemptId,
         {
@@ -444,8 +445,7 @@ export function useExamAttempt(
 
         const nextRemainingSeconds =
           Math.max(
-            liveAttempt.remainingSeconds -
-              1,
+            remainingExamSeconds(liveAttempt.startedAtMs, liveAttempt.durationSeconds),
             0,
           );
 
@@ -501,27 +501,12 @@ export function useExamAttempt(
           submittingRef.current = true;
           setSubmitting(true);
 
-          void saveExamAttemptPatch(
-            user.uid,
+          void requestExamSubmit(
+            user,
+            exam.id,
             liveAttempt.attemptId,
-            {
-              answers:
-                nextAttempt.answers,
-              flaggedQuestionIds:
-                nextAttempt.flaggedQuestionIds,
-              currentQuestionIndex:
-                nextAttempt.currentQuestionIndex,
-              remainingSeconds: 0,
-            },
+            "time-expired",
           )
-            .then(() =>
-              requestExamSubmit(
-                user,
-                exam.id,
-                liveAttempt.attemptId,
-                "time-expired",
-              ),
-            )
             .then((response) => {
               setProgress(
                 response.progress,

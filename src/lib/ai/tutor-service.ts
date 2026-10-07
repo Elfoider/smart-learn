@@ -60,14 +60,14 @@ function buildTutorPrompt(
 ) {
   const history =
     payload.history.length > 0
-      ? payload.history
+      ? payload.history.slice(-4)
           .map(
             (message) =>
               `${
                 message.role === "user"
                   ? "ESTUDIANTE"
                   : "TUTOR"
-              }: ${message.content}`,
+              }: ${message.content.slice(0, 600)}`,
           )
           .join("\n\n")
       : "No existe conversación previa.";

@@ -1,3 +1,4 @@
+import { readRequestJson, RequestInputError } from "@/lib/server/request-validation";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -21,19 +22,22 @@ const createEnrollmentSchema =
       .string()
       .trim()
       .min(1)
-      .max(200),
+      .max(200)
+      .refine(value => !value.includes("/") && value !== "." && value !== ".."),
 
     courseId: z
       .string()
       .trim()
       .min(1)
-      .max(200),
+      .max(200)
+      .refine(value => !value.includes("/") && value !== "." && value !== ".."),
 
     sectionId: z
       .string()
       .trim()
       .min(1)
-      .max(200),
+      .max(200)
+      .refine(value => !value.includes("/") && value !== "." && value !== ".."),
   });
 
 const updateEnrollmentSchema =
@@ -43,13 +47,15 @@ const updateEnrollmentSchema =
         .string()
         .trim()
         .min(1)
-        .max(450),
+        .max(450)
+        .refine(value => !value.includes("/") && value !== "." && value !== ".."),
 
       sectionId: z
         .string()
         .trim()
         .min(1)
         .max(200)
+        .refine(value => !value.includes("/") && value !== "." && value !== "..")
         .optional(),
 
       status: z
@@ -76,6 +82,7 @@ function handleRouteError(
   error: unknown,
   fallbackMessage: string,
 ) {
+  if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: 400 });
   if (
     error instanceof TeacherApiError ||
     error instanceof
@@ -124,6 +131,7 @@ export async function GET(
       enrollments,
     });
   } catch (error) {
+    if (error instanceof RequestInputError) return NextResponse.json({ error: error.message }, { status: 400 });
     return handleRouteError(
       error,
       "No fue posible cargar las inscripciones.",
@@ -140,7 +148,7 @@ export async function POST(
         request,
       );
 
-    const body = await request.json();
+    const body = await readRequestJson(request);
 
     const parsed =
       createEnrollmentSchema.safeParse(
@@ -190,7 +198,7 @@ export async function PATCH(
         request,
       );
 
-    const body = await request.json();
+    const body = await readRequestJson(request);
 
     const parsed =
       updateEnrollmentSchema.safeParse(
