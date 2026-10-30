@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LiveCourses } from "@/components/student/live-courses";
+import { StudentHome } from "@/components/student/student-home";
 
 export const metadata: Metadata = {
   title: "Mi salón",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudentPage() {
-  return <LiveCourses home />;
+  return <StudentHome />;
 }

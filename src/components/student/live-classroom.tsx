@@ -19,6 +19,7 @@ type Plan = { unit?: string; startDate?: string; lessonContent?: string; activit
 export function LiveClassroom({ courseId }: { courseId: string }) {
   const { profile } = useAuth();
   const [step, setStep] = useState(0);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const progress = useCourseProgress({ courseId, initialCurrentLessonId: "", initialCompletedLessonIds: noCompleted });
   const enrolled = useStudentEnrollments();
   const enrollment = enrolled.data.find(e => e.courseId === courseId && e.status === "active");
@@ -43,7 +44,10 @@ export function LiveClassroom({ courseId }: { courseId: string }) {
   const validUrl = (url: string) => { try { return ["https:", "http:"].includes(new URL(url).protocol); } catch { return false; } };
   const ordered = [...new Map([...plans.data, ...sharedPlans.data].map(item => [item.id, item])).values()].filter(inSection)
     .sort((a,b) => (a.unit || "").localeCompare(b.unit || "", "es", { numeric: true }) || (a.startDate || "").localeCompare(b.startDate || "") || a.title.localeCompare(b.title));
-  const selected = ordered.find(p => p.id === progress.currentLessonId) || ordered[0];
+  const selected = ordered.find(p => p.id === selectedLessonId)
+    || ordered.find(p => p.id === progress.currentLessonId && !progress.completedLessonIds.includes(p.id))
+    || ordered.find(p => !progress.completedLessonIds.includes(p.id))
+    || ordered.find(p => p.id === progress.currentLessonId) || ordered[0];
   const groups = [...new Set(ordered.map(p => p.unit || "Contenido"))];
   const completed = ordered.filter(p => progress.completedLessonIds.includes(p.id)).length;
   const percent = ordered.length ? Math.round(completed / ordered.length * 100) : 0;
@@ -62,7 +66,7 @@ export function LiveClassroom({ courseId }: { courseId: string }) {
     <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
       <aside className="rounded-3xl border border-border bg-card p-5 xl:sticky xl:top-24"><h2 className="flex items-center gap-2 font-semibold"><BookOpen size={18} className="text-primary" /> Unidades y capítulos</h2>
         {!ordered.length && !allLoading && <p className="mt-4 text-sm text-muted-foreground">Tu docente aún no ha publicado clases.</p>}
-        {groups.map(unit => <div key={unit} className="mt-5"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{unit}</h3><div className="space-y-2">{ordered.filter(p => (p.unit || "Contenido") === unit).map(p => <button type="button" key={p.id} aria-current={selected?.id === p.id ? "step" : undefined} onClick={() => { setStep(0); void progress.openLesson(p.id); }} className="flex w-full items-start gap-2 rounded-xl border border-border p-3 text-left text-sm aria-[current=step]:border-primary aria-[current=step]:bg-primary/10">{progress.completedLessonIds.includes(p.id) && <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />}<span>{p.title}</span></button>)}</div></div>)}
+        {groups.map(unit => <div key={unit} className="mt-5"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{unit}</h3><div className="space-y-2">{ordered.filter(p => (p.unit || "Contenido") === unit).map(p => <button type="button" key={p.id} aria-current={selected?.id === p.id ? "step" : undefined} onClick={() => { setStep(0); setSelectedLessonId(p.id); void progress.openLesson(p.id); }} className="flex w-full items-start gap-2 rounded-xl border border-border p-3 text-left text-sm aria-[current=step]:border-primary aria-[current=step]:bg-primary/10">{progress.completedLessonIds.includes(p.id) && <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />}<span>{p.title}</span></button>)}</div></div>)}
       </aside>
       <main className="min-w-0 space-y-6">
         {selected && <>

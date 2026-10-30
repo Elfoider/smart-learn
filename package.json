@@ -14,10 +14,11 @@
     "demo:preview": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs",
     "demo:load": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs --apply",
     "test:integration": "node --experimental-test-module-mocks --test tests/api-workflows.test.mjs tests/sprint7-core.test.mjs",
-    "test": "npm run test:practice && npm run test:ai && npm run test:integration && npm run test:admin",
+    "test": "npm run test:practice && npm run test:ai && npm run test:integration && npm run test:admin && npm run test:student",
     "typecheck": "tsc --noEmit",
     "test:admin": "node --experimental-test-module-mocks --test tests/admin.test.mjs",
-    "admin:bootstrap": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.mjs"
+    "admin:bootstrap": "node --env-file-if-exists=.env.local scripts/bootstrap-admin.mjs",
+    "test:student": "node --test tests/student-experience.test.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.14.0",
