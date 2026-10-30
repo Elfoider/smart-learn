@@ -211,3 +211,95 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+/* UX/UI 1: identity, compact navigation and readable working space. */
+:root {
+  --background: #f3f8fc; --foreground: #08284b;
+  --card-foreground: #08284b; --muted: #e8f0f7;
+  --muted-foreground: #526b83; --primary: #007d94;
+  --primary-foreground: #ffffff; --secondary: #def5f8;
+  --secondary-foreground: #07627a; --border: rgba(8,40,75,.15);
+}
+.dark {
+  --background: #071425; --foreground: #edf8ff; --card: #0c2036;
+  --card-foreground: #edf8ff; --muted: #142c45; --muted-foreground: #a1b5c8;
+  --primary: #22dbea; --primary-foreground: #062137;
+  --secondary: #103344; --secondary-foreground: #a0f0f5;
+  --border: rgba(153,204,231,.16);
+}
+.brand-wordmark { width: 228px; height: 68px; }
+.portal-frame { --rail: 260px; min-height: 100vh; background: var(--background); }
+.portal-frame.is-collapsed { --rail: 76px; }
+.portal-sidebar { width: var(--rail); position: fixed; inset: 0 auto 0 0; z-index: 35; display: flex; flex-direction: column; background: var(--card); border-right: 1px solid var(--border); transition: width .22s ease; }
+.portal-body { margin-left: var(--rail); transition: margin-left .22s ease; }
+.portal-toolbar { height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 22px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 94%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 30; }
+.portal-content { max-width: 1920px; margin-inline: auto; padding: 24px; min-width: 0; }
+.portal-nav-item { display: flex; align-items: center; gap: 12px; min-height: 44px; width: 100%; border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted-foreground); transition: background .18s, color .18s, transform .18s; }
+.is-collapsed .portal-sidebar .portal-nav-item { justify-content: center; }
+.portal-nav-item:hover { background: var(--muted); color: var(--foreground); }
+.portal-nav-item.is-active { background: linear-gradient(115deg, var(--primary), color-mix(in srgb, var(--primary) 80%, #0063a4)); color: var(--primary-foreground); box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 17%, transparent); }
+.portal-icon { display: inline-flex; justify-content: center; align-items: center; width: 40px; height: 40px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); transition: border-color .18s, transform .18s, box-shadow .18s; }
+.portal-icon:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 12%, transparent); }
+.portal-dialog { width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); margin: auto; overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); color: var(--foreground); box-shadow: var(--shadow-soft); }
+.portal-dialog[open] { animation: portal-enter .2s ease-out; }
+.portal-dialog::backdrop { background: rgba(2,14,30,.65); backdrop-filter: blur(5px); }
+.portal-menu-dialog { width: min(360px, calc(100vw - 24px)); }
+@media (min-width: 1024px) { .portal-mobile-menu { display: none; } }
+.portal-frame.is-focused { --rail: 0px; }
+.is-focused .portal-sidebar { display: none; }
+.is-focused .portal-toolbar { height: 48px; }
+.portal-content > div > header { padding: 20px 24px; }
+.portal-content > div > header h1 { font-size: clamp(1.5rem, 2.5vw, 2rem); line-height: 1.2; }
+.portal-content button:not(:disabled):active { transform: scale(.985); }
+.portal-content button, .portal-content a { transition: background-color .16s, box-shadow .16s, transform .16s; }
+:where(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+button:disabled { cursor: not-allowed; }
+.portal-skip { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 12px 18px; border-radius: 12px; background: var(--primary); color: var(--primary-foreground); }
+.portal-skip:focus { top: 12px; }
+@keyframes portal-enter { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 1023px) {
+  .portal-sidebar { display: none; }
+  .portal-body { margin-left: 0; }
+  .portal-toolbar { padding: 0 12px; gap: 5px; }
+  .portal-content { padding: 16px 12px; }
+  .portal-toolbar .portal-icon { width: 36px; height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-frame *, .portal-dialog { transition: none !important; animation: none !important; }
+}
+
+/* UX/UI 2: aulas reales como centro de la experiencia. */
+.login-system-panel { background: radial-gradient(ellipse at 90% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 55%), var(--card); }
+.student-lobby { max-width: 1600px; margin-inline: auto; }
+.student-welcome { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 28px 0 26px; border-bottom: 1px solid var(--border); }
+.student-practice-link { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(120deg, var(--card), var(--secondary)); min-width: 275px; box-shadow: 0 8px 30px color-mix(in srgb, var(--primary) 7%, transparent); }
+.student-practice-link:hover { border-color: var(--primary); transform: translateY(-3px); }
+.classroom-card { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 26px; border-radius: 26px; min-height: 310px; color: white; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 12px 24px rgba(2,16,40,.12); isolation: isolate; transition: transform .22s ease, box-shadow .22s ease !important; }
+.classroom-card::before { content: ""; position: absolute; z-index: -1; width: 280px; height: 280px; top: -170px; right: -100px; border: 40px solid rgba(255,255,255,.05); border-radius: 50%; transition: transform .4s ease; }
+.classroom-card:hover { transform: translateY(-5px); box-shadow: 0 20px 35px rgba(2,16,40,.2); }
+.classroom-card:hover::before { transform: scale(1.15); }
+.classroom-tone-0 { background: linear-gradient(135deg,#093a70,#075c88); }
+.classroom-tone-1 { background: linear-gradient(135deg,#293569,#45458e); }
+.classroom-tone-2 { background: linear-gradient(135deg,#093b55,#05657b); }
+.classroom-book { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 15px; background: rgba(255,255,255,.13); }
+.classroom-enter { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 14px 16px; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.1); margin-top: auto; }
+.classroom-card p { margin-bottom: 24px; }
+.student-tool-link { display: flex; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); font-size: 14px; }
+.student-tool-link:hover { border-color: var(--primary); transform: translateY(-2px); }
+.student-empty { padding: 36px 24px; border: 1px dashed var(--border); border-radius: 24px; text-align: center; background: var(--card); }
+.student-utilities { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; padding: 4px 0 10px; }
+.is-collapsed .portal-sidebar .student-utilities { flex-direction: column; align-items: center; }
+.student-floating-controls { position: fixed; top: 14px; right: 14px; z-index: 32; }
+[data-portal="student"] .portal-sidebar { background: linear-gradient(180deg,var(--card),color-mix(in srgb,var(--card) 94%,#0479b4)); }
+[data-portal="student"] .portal-content { padding-top: 16px; }
+@media (max-width: 1023px) {
+  [data-portal="student"] .portal-content { padding-top: 62px; }
+  .student-welcome { padding-top: 0; }
+}
+@media (max-width: 767px) {
+  .student-welcome { flex-direction: column; align-items: stretch; gap: 20px; }
+  .student-practice-link { min-width: 0; }
+  .classroom-card { min-height: 290px; padding: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .classroom-card, .classroom-card::before, .student-practice-link, .student-tool-link { transition: none !important; transform: none !important; }
+}

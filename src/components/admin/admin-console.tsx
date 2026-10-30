@@ -1,11 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ShieldCheck, Users, BookOpen, Layers, GraduationCap, NotebookPen, ClipboardCheck, FolderOpen, Video, ChartColumn, CalendarCheck, Settings, History, Bot, LayoutDashboard, LogOut, Plus, RefreshCw, Download, ChevronRight, X, Search } from "lucide-react";
+import { Users, BookOpen, Layers, GraduationCap, NotebookPen, ClipboardCheck, FolderOpen, Video, ChartColumn, CalendarCheck, Settings, History, Bot, LayoutDashboard, Plus, RefreshCw, Download, ChevronRight, X, Search } from "lucide-react";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { PortalFrame } from "@/components/navigation/portal-frame";
 import { useAuth } from "@/hooks/use-auth";
 import { adminModules, adminLabels, type AdminRecord, type AdminResource, type AdminField } from "@/lib/admin/catalog";
-import { InstitutionNotice } from "@/components/admin/institution-notice";
 import { adminCsv } from "@/lib/admin/csv";
 type Module = AdminResource | "summary" | "reports" | "adminAudit" | "aiLogs";
 const navigation = [{ id: "summary", label: "Resumen", icon: LayoutDashboard }, { id: "users", label: "Usuarios", icon: Users }, { id: "courses", label: "Materias", icon: BookOpen }, { id: "sections", label: "Secciones", icon: Layers }, { id: "enrollments", label: "Matrículas", icon: GraduationCap }, { id: "lessonPlans", label: "Clases y planificación", icon: NotebookPen }, { id: "materials", label: "Materiales", icon: FolderOpen }, { id: "onlineClasses", label: "Encuentros en línea", icon: Video }, { id: "assessments", label: "Evaluaciones y rúbricas", icon: ClipboardCheck }, { id: "grades", label: "Calificaciones", icon: ChartColumn }, { id: "attendance", label: "Asistencia", icon: CalendarCheck }, { id: "reports", label: "Reportes", icon: ChartColumn }, { id: "aiLogs", label: "Actividad de IA", icon: Bot }, { id: "adminAudit", label: "Auditoría", icon: History }, { id: "settings", label: "Configuración", icon: Settings }] as const;
@@ -15,7 +14,7 @@ const labelFor = (value: unknown) => adminLabels[String(value)] || String(value 
 function download(name: string, records: Record<string, unknown>[]) { const url = URL.createObjectURL(new Blob([adminCsv(records)], { type: "text/csv;charset=utf-8" })); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); }
 function defaults(module: AdminResource, record: AdminRecord | null) { return Object.fromEntries(adminModules[module].fields.map(f => [f.key, record?.[f.key] ?? f.default ?? (f.type === "boolean" ? false : f.type === "number" ? 0 : f.type === "lines" || f.type === "rubric" ? [] : "")])); }
 export function AdminConsole() {
-    const { user, profile, signOut } = useAuth();
+    const { user } = useAuth();
     const [module, setModule] = useState<Module>("summary");
     const [records, setRecords] = useState<AdminRecord[]>([]);
     const [summary, setSummary] = useState<{
@@ -144,17 +143,8 @@ export function AdminConsole() {
     const lookup = (collection: string, id: unknown) => { const r = references[collection]?.find(r => r.id === id); return r ? String(r.name || r.title || r.code || r.id) : String(id || "Todas las secciones"); };
     const title = navigation.find(n => n.id === module)?.label || "Administración";
     const resource = module in adminModules ? module as AdminResource : null;
-    return <div className="min-h-screen bg-background">
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border bg-card lg:flex">
-      <div className="flex items-center gap-3 border-b border-border p-6"><ShieldCheck className="h-9 w-9 text-primary"/><div><p className="font-bold">Smart Learn</p><p className="text-xs text-muted-foreground">Administración institucional</p></div></div>
-      <nav aria-label="Módulos administrativos" className="flex-1 space-y-1 overflow-y-auto p-3">{navigation.map(n => <button key={n.id} onClick={() => navigate(n.id)} aria-current={module === n.id ? "page" : undefined} className={`flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-sm ${module === n.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}><n.icon className="h-4 w-4"/>{n.label}</button>)}</nav>
-      <div className="border-t border-border p-4"><p className="mb-3 truncate text-sm font-medium">{profile?.name}</p><button className={buttonClass + " w-full"} onClick={() => void signOut().catch(() => toast.error("No se pudo cerrar sesión."))}><LogOut className="h-4 w-4"/>Cerrar sesión</button></div>
-    </aside>
-    <div className="lg:pl-64">
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-5 py-4 backdrop-blur"><div><p className="text-xs font-semibold uppercase tracking-widest text-primary">Portal administrador</p><p className="text-sm text-muted-foreground">Smart Learn · Gestión integral</p></div><div className="flex items-center gap-2"><ThemeToggle /><button className={buttonClass + " lg:hidden"} aria-label="Cerrar sesión" onClick={() => void signOut().catch(() => toast.error("No se pudo cerrar sesión."))}><LogOut className="h-4 w-4"/></button></div></header>
-      <InstitutionNotice />
-      <nav aria-label="Módulos en móvil" className="border-b border-border p-4 lg:hidden"><select aria-label="Seleccionar módulo" className={fieldClass} value={module} onChange={e => navigate(e.target.value as Module)}>{navigation.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}</select></nav>
-      <main className="mx-auto max-w-7xl space-y-6 p-5 sm:p-8">
+    return <PortalFrame role="admin" items={navigation.map(n => ({ ...n, group: ["summary", "users"].includes(n.id) ? "Acceso" : ["reports", "aiLogs", "adminAudit", "settings"].includes(n.id) ? "Supervisión" : "Organización académica" }))} currentId={module} onNavigate={id => navigate(id as Module)}>
+      <section className="space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-3xl font-semibold tracking-tight">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p></div><div className="flex gap-2"><button disabled={loading || saving} className={buttonClass} onClick={() => setRevision(v => v + 1)}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}/>Actualizar</button>{resource && resource !== "settings" && <button className={buttonClass + " bg-primary text-primary-foreground"} onClick={() => open(null)}><Plus className="h-4 w-4"/>Crear</button>}</div></div>
         {error && <p role="alert" className="rounded-2xl border border-danger/40 p-4 text-sm text-danger">{error}</p>}
         {loading ? <p role="status" className="rounded-2xl border border-border p-6 text-muted-foreground">Cargando información…</p> : module === "summary" && summary ? <>
@@ -171,8 +161,7 @@ export function AdminConsole() {
             <div className="flex gap-3"><button className={buttonClass} disabled={!cursor} onClick={() => setCursor(null)}>Primera página</button><button className={buttonClass} disabled={!nextCursor} onClick={() => setCursor(nextCursor)}>Siguiente página<ChevronRight className="h-4 w-4"/></button></div>
           </>}
         </>}
-      </main>
-    </div>
+      </section>
     <dialog ref={dialogRef} onCancel={e => { if (saving)
         e.preventDefault();
     else
@@ -181,7 +170,7 @@ export function AdminConsole() {
       {adminModules[resource].fields.filter(f => !(resource === "users" && !editing && f.key === "status")).map(f => <FieldEditor key={f.key} field={f} value={values[f.key]} values={values} references={references} locked={Boolean(editing) && ["courseId", "studentId", "assessmentId", "date"].includes(f.key)} onChange={v => patch(f.key, v)}/>)}
       <label className="text-sm sm:col-span-2">Motivo del cambio<textarea required minLength={8} maxLength={500} className={fieldClass + " mt-2"} rows={2} placeholder="Explica por qué se crea o modifica este registro." value={reason} onChange={e => setReason(e.target.value)}/></label></div><footer className="flex justify-end gap-3 border-t border-border p-5"><button type="button" disabled={saving} className={buttonClass} onClick={() => setEditing(undefined)}>Cancelar</button><button disabled={saving} className={buttonClass + " bg-primary text-primary-foreground"}>{saving ? "Guardando…" : "Guardar cambios"}</button></footer></form>}
     </dialog>
-  </div>;
+  </PortalFrame>;
 }
 function FieldEditor({ field: f, value, values, references, locked, onChange }: {
     field: AdminField;

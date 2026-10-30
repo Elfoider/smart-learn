@@ -7,16 +7,12 @@ import {
   BookOpen,
   BrainCircuit,
   Check,
-  ChevronRight,
-  CirclePlay,
   Eye,
   EyeOff,
-  GraduationCap,
   LoaderCircle,
   LockKeyhole,
   Mail,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -70,24 +66,9 @@ type ExternalProvider =
   | "microsoft";
 
 const learningItems = [
-  {
-    title: "Contenido organizado",
-    description:
-      "Clases, materiales y actividades en un solo espacio.",
-    icon: BookOpen,
-  },
-  {
-    title: "Progreso inteligente",
-    description:
-      "Seguimiento académico y recomendaciones personalizadas.",
-    icon: BrainCircuit,
-  },
-  {
-    title: "Comunidad conectada",
-    description:
-      "Estudiantes y docentes trabajando de forma integrada.",
-    icon: Users,
-  },
+  { title: "Estudiante", description: "Entra a tus materias, consulta las clases y practica sus temas con el asistente académico.", icon: BookOpen },
+  { title: "Docente", description: "Prepara y publica clases, comparte materiales y gestiona evaluaciones y estudiantes.", icon: BrainCircuit },
+  { title: "Administrador", description: "Organiza usuarios, materias, secciones y matrículas desde el panel de gestión.", icon: Users },
 ];
 
 export function LoginExperience() {
@@ -338,8 +319,8 @@ export function LoginExperience() {
 
               <p className="mt-5 max-w-lg text-sm leading-7 text-muted-foreground sm:text-base">
                 Ingresa para acceder a tus clases,
-                herramientas académicas, progreso y
-                experiencias inteligentes.
+                materiales y
+                herramientas académicas.
               </p>
             </div>
 
@@ -629,143 +610,18 @@ export function LoginExperience() {
           </motion.div>
         </section>
 
-        <section className="relative hidden min-h-screen overflow-hidden border-l border-border bg-[#08141c] text-white lg:flex lg:items-center lg:justify-center">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(36,214,193,0.22),transparent_33%),radial-gradient(circle_at_80%_80%,rgba(98,91,255,0.22),transparent_34%)]"
-          />
-
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:52px_52px]"
-          />
-
-          <motion.div
-            initial={{
-              opacity: 0,
-              scale: 0.96,
-            }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-            }}
-            transition={{
-              duration: 0.8,
-              delay: 0.15,
-              ease: "easeOut",
-            }}
-            className="relative z-10 w-full max-w-2xl px-12 py-14 xl:px-20"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-white/70 backdrop-blur-xl">
-              <Sparkles
-                aria-hidden="true"
-                className="h-4 w-4 text-[#38e4ce]"
-              />
-
-              Tu ecosistema académico inteligente
+        <section className="login-system-panel relative hidden min-h-screen border-l border-border lg:flex lg:items-center" aria-labelledby="system-title">
+          <div className="relative z-10 mx-auto w-full max-w-2xl px-12 py-16 xl:px-16">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Smart Learn · Gestión académica</p>
+            <h2 id="system-title" className="mt-5 text-4xl font-semibold leading-tight tracking-tight xl:text-5xl">Tu aula.<br />Tus herramientas.<br /><span className="text-primary">Un mismo lugar.</span></h2>
+            <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground">Clases, materiales, evaluaciones y asistencia académica para cada integrante de la institución.</p>
+            <div className="mt-9 space-y-3">
+              {learningItems.map(item => <article key={item.title} className="rounded-2xl border border-border bg-card/80 p-5">
+                <div className="flex items-start gap-4"><item.icon aria-hidden="true" className="mt-1 h-5 w-5 shrink-0 text-primary" /><div><h3 className="font-semibold">{item.title}</h3><p className="mt-1 text-sm leading-6 text-muted-foreground">{item.description}</p></div></div>
+              </article>)}
             </div>
-
-            <h2 className="mt-7 max-w-xl text-4xl font-semibold leading-tight tracking-[-0.045em] xl:text-5xl">
-              Aprende con claridad.
-              <br />
-              Enseña con inteligencia.
-            </h2>
-
-            <p className="mt-5 max-w-xl text-base leading-8 text-white/60">
-              Una experiencia creada para conectar
-              contenidos, seguimiento, evaluación y
-              asistencia académica dentro de una
-              plataforma sencilla y profesional.
-            </p>
-
-            <div className="mt-10 grid gap-4">
-              {learningItems.map(
-                (item, index) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <motion.article
-                      key={item.title}
-                      initial={{
-                        opacity: 0,
-                        x: 24,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        x: 0,
-                      }}
-                      transition={{
-                        duration: 0.55,
-                        delay:
-                          0.3 +
-                          index * 0.12,
-                      }}
-                      className="flex items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl"
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#153437] text-[#57ecd9]">
-                        <Icon
-                          aria-hidden="true"
-                          className="h-5 w-5"
-                        />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold">
-                          {item.title}
-                        </h3>
-
-                        <p className="mt-1 text-sm leading-6 text-white/50">
-                          {item.description}
-                        </p>
-                      </div>
-
-                      <ChevronRight
-                        aria-hidden="true"
-                        className="h-5 w-5 text-white/30"
-                      />
-                    </motion.article>
-                  );
-                },
-              )}
-            </div>
-
-            <div className="mt-8 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 backdrop-blur-xl">
-              <div className="flex items-center justify-between gap-5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#27d7c1] text-[#03110f] shadow-lg shadow-[#27d7c1]/20">
-                    <CirclePlay
-                      aria-hidden="true"
-                      className="h-6 w-6"
-                    />
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#5eead8]">
-                      Próxima experiencia
-                    </p>
-
-                    <p className="mt-1 text-sm font-semibold">
-                      Aula interactiva Smart Learn
-                    </p>
-                  </div>
-                </div>
-
-                <GraduationCap
-                  aria-hidden="true"
-                  className="h-8 w-8 text-white/20"
-                />
-              </div>
-
-              <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full w-[68%] rounded-full bg-gradient-to-r from-[#24d6c1] to-[#7877ff]" />
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-xs text-white/40">
-                <span>Progreso académico</span>
-                <span>68%</span>
-              </div>
-            </div>
-          </motion.div>
+            <div className="mt-7 border-t border-border pt-5 text-sm leading-6 text-muted-foreground"><p className="font-semibold text-foreground">¿Cómo accedo?</p><p className="mt-1">Usa la cuenta vinculada a tu institución. Smart Learn abrirá el portal correspondiente a tu rol. Si no tienes acceso, consulta con tu docente o administrador.</p></div>
+          </div>
         </section>
       </div>
     </main>

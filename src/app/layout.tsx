@@ -28,6 +28,7 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   applicationName: siteConfig.name,
+  icons: { icon: "/icon.png", apple: "/brand/icon.png" },
   keywords: [
     "gestión académica",
     "educación",
