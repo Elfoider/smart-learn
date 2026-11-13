@@ -1,5 +1,6 @@
 "use client";
 
+import { PreviewContent, PublicationPreview } from "./publication-preview";
 import type {
   LucideIcon,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
   type ReactNode,
 } from "react";
 
+import type { GeneratedLesson } from "@/lib/teacher/ai-drafts";
 import { cn } from "@/lib/utils/cn";
 import type {
   AcademicCourse,
@@ -33,6 +35,7 @@ import type {
 
 interface TeacherPlanningDialogProps {
   plan?: TeacherLessonPlan;
+  generatedDraft?: GeneratedLesson & { courseId: string };
   courses: AcademicCourse[];
   sections: AcademicSection[];
   saving: boolean;
@@ -87,6 +90,7 @@ function textToItems(value: string) {
 
 export function TeacherPlanningDialog({
   plan,
+  generatedDraft,
   courses,
   sections,
   saving,
@@ -102,6 +106,7 @@ export function TeacherPlanningDialog({
 
   const initialCourseId =
     plan?.courseId ??
+    generatedDraft?.courseId ??
     firstCourse?.id ??
     "";
 
@@ -114,11 +119,11 @@ export function TeacherPlanningDialog({
     );
 
   const [title, setTitle] = useState(
-    plan?.title ?? "",
+    plan?.title ?? generatedDraft?.title ?? "",
   );
 
   const [unit, setUnit] = useState(
-    plan?.unit ?? "",
+    plan?.unit ?? generatedDraft?.unit ?? "",
   );
 
   const [weekLabel, setWeekLabel] =
@@ -146,13 +151,13 @@ export function TeacherPlanningDialog({
   const [objectives, setObjectives] =
     useState(
       itemsToText(
-        plan?.objectives,
+        plan?.objectives ?? generatedDraft?.objectives,
       ),
     );
 
   const [contents, setContents] =
     useState(
-      itemsToText(plan?.contents),
+      itemsToText(plan?.contents ?? generatedDraft?.contents),
     );
 
   const [strategies, setStrategies] =
@@ -170,7 +175,7 @@ export function TeacherPlanningDialog({
   const [activities, setActivities] =
     useState(
       itemsToText(
-        plan?.activities,
+        plan?.activities ?? generatedDraft?.activities,
       ),
     );
 
@@ -181,7 +186,7 @@ export function TeacherPlanningDialog({
     plan?.evaluationEvidence ?? "",
   );
 
-  const [lessonContent, setLessonContent] = useState(plan?.lessonContent ?? "");
+  const [lessonContent, setLessonContent] = useState(plan?.lessonContent ?? generatedDraft?.lessonContent ?? "");
   const [notes, setNotes] =
     useState(plan?.notes ?? "");
 
@@ -196,6 +201,8 @@ export function TeacherPlanningDialog({
   ] = useState(
     plan?.visibleToStudents ?? false,
   );
+
+  const [reviewing, setReviewing] = useState(false);
 
   const [formError, setFormError] =
     useState<string | null>(null);
@@ -268,6 +275,7 @@ export function TeacherPlanningDialog({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+    if (saving) return;
 
     const validationError =
       validateForm();
@@ -278,6 +286,12 @@ export function TeacherPlanningDialog({
     }
 
     setFormError(null);
+
+    if (!reviewing) {
+      setReviewing(true);
+      return;
+    }
+
 
     const values:
       LessonPlanFormValues = {
@@ -351,6 +365,7 @@ export function TeacherPlanningDialog({
           void handleSubmit(event);
         }}
       >
+        <fieldset hidden={reviewing} disabled={reviewing || saving} className="min-w-0 border-0 p-0">
         <section className="grid gap-5 md:grid-cols-2">
           <FormField label="Asignatura">
             <select
@@ -713,6 +728,20 @@ export function TeacherPlanningDialog({
             </div>
           </button>
         </section>
+        </fieldset>
+        {reviewing && (
+          <PublicationPreview
+            title={title}
+            course={courses.find(course => course.id === courseId)?.name}
+            section={sections.find(section => section.id === sectionId)?.code}
+            visible={status !== "archived" && visibleToStudents}
+          >
+            <PreviewContent title="Objetivos" text={objectives} />
+            <PreviewContent title="Conceptos de la clase" text={contents} />
+            <PreviewContent title="Explicación y ejemplos" text={lessonContent} />
+            <PreviewContent title="Actividades" text={activities} />
+          </PublicationPreview>
+        )}
 
         {formError && (
           <p className="mt-5 rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
@@ -724,10 +753,10 @@ export function TeacherPlanningDialog({
           <button
             type="button"
             disabled={saving}
-            onClick={onClose}
+            onClick={reviewing ? () => setReviewing(false) : onClose}
             className="min-h-11 rounded-2xl border border-border bg-background px-5 text-sm font-semibold text-muted-foreground"
           >
-            Cancelar
+            {reviewing ? "Volver a editar" : "Cancelar"}
           </button>
 
           <button
@@ -747,9 +776,7 @@ export function TeacherPlanningDialog({
               />
             )}
 
-            {plan
-              ? "Guardar cambios"
-              : "Crear planificación"}
+            {reviewing ? (plan ? "Guardar cambios" : "Crear planificación") : "Revisar"}
           </button>
         </div>
       </form>

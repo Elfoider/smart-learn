@@ -211,3 +211,146 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+/* UX/UI 1: identity, compact navigation and readable working space. */
+:root {
+  --background: #f3f8fc; --foreground: #08284b;
+  --card-foreground: #08284b; --muted: #e8f0f7;
+  --muted-foreground: #526b83; --primary: #007d94;
+  --primary-foreground: #ffffff; --secondary: #def5f8;
+  --secondary-foreground: #07627a; --border: rgba(8,40,75,.15);
+}
+.dark {
+  --background: #071425; --foreground: #edf8ff; --card: #0c2036;
+  --card-foreground: #edf8ff; --muted: #142c45; --muted-foreground: #a1b5c8;
+  --primary: #22dbea; --primary-foreground: #062137;
+  --secondary: #103344; --secondary-foreground: #a0f0f5;
+  --border: rgba(153,204,231,.16);
+}
+.brand-wordmark { width: 228px; height: 68px; }
+.portal-frame { --rail: 260px; min-height: 100vh; background: var(--background); }
+.portal-frame.is-collapsed { --rail: 76px; }
+.portal-sidebar { width: var(--rail); position: fixed; inset: 0 auto 0 0; z-index: 35; display: flex; flex-direction: column; background: var(--card); border-right: 1px solid var(--border); transition: width .22s ease; }
+.portal-body { margin-left: var(--rail); transition: margin-left .22s ease; }
+.portal-toolbar { height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 22px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 94%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 30; }
+.portal-content { max-width: 1920px; margin-inline: auto; padding: 24px; min-width: 0; }
+.portal-nav-item { display: flex; align-items: center; gap: 12px; min-height: 44px; width: 100%; border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted-foreground); transition: background .18s, color .18s, transform .18s; }
+.is-collapsed .portal-sidebar .portal-nav-item { justify-content: center; }
+.portal-nav-item:hover { background: var(--muted); color: var(--foreground); }
+.portal-nav-item.is-active { background: linear-gradient(115deg, var(--primary), color-mix(in srgb, var(--primary) 80%, #0063a4)); color: var(--primary-foreground); box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 17%, transparent); }
+.portal-icon { display: inline-flex; justify-content: center; align-items: center; width: 40px; height: 40px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); transition: border-color .18s, transform .18s, box-shadow .18s; }
+.portal-icon:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 12%, transparent); }
+.portal-dialog { width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); margin: auto; overflow: auto; padding: 24px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); color: var(--foreground); box-shadow: var(--shadow-soft); }
+.portal-dialog[open] { animation: portal-enter .2s ease-out; }
+.portal-dialog::backdrop { background: rgba(2,14,30,.65); backdrop-filter: blur(5px); }
+.portal-menu-dialog { width: min(360px, calc(100vw - 24px)); }
+@media (min-width: 1024px) { .portal-mobile-menu { display: none; } }
+.portal-frame.is-focused { --rail: 0px; }
+.is-focused .portal-sidebar { display: none; }
+.is-focused .portal-toolbar { height: 48px; }
+.portal-content > div > header { padding: 20px 24px; }
+.portal-content > div > header h1 { font-size: clamp(1.5rem, 2.5vw, 2rem); line-height: 1.2; }
+.portal-content button:not(:disabled):active { transform: scale(.985); }
+.portal-content button, .portal-content a { transition: background-color .16s, box-shadow .16s, transform .16s; }
+:where(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+button:disabled { cursor: not-allowed; }
+.portal-skip { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 12px 18px; border-radius: 12px; background: var(--primary); color: var(--primary-foreground); }
+.portal-skip:focus { top: 12px; }
+@keyframes portal-enter { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 1023px) {
+  .portal-sidebar { display: none; }
+  .portal-body { margin-left: 0; }
+  .portal-toolbar { padding: 0 12px; gap: 5px; }
+  .portal-content { padding: 16px 12px; }
+  .portal-toolbar .portal-icon { width: 36px; height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portal-frame *, .portal-dialog { transition: none !important; animation: none !important; }
+}
+
+/* UX/UI 2: aulas reales como centro de la experiencia. */
+.login-system-panel { background: radial-gradient(ellipse at 90% 0%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 55%), var(--card); }
+.student-lobby { max-width: 1600px; margin-inline: auto; }
+.student-welcome { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 28px 0 26px; border-bottom: 1px solid var(--border); }
+.student-practice-link { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(120deg, var(--card), var(--secondary)); min-width: 275px; box-shadow: 0 8px 30px color-mix(in srgb, var(--primary) 7%, transparent); }
+.student-practice-link:hover { border-color: var(--primary); transform: translateY(-3px); }
+.classroom-card { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 26px; border-radius: 26px; min-height: 310px; color: white; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 12px 24px rgba(2,16,40,.12); isolation: isolate; transition: transform .22s ease, box-shadow .22s ease !important; }
+.classroom-card::before { content: ""; position: absolute; z-index: -1; width: 280px; height: 280px; top: -170px; right: -100px; border: 40px solid rgba(255,255,255,.05); border-radius: 50%; transition: transform .4s ease; }
+.classroom-card:hover { transform: translateY(-5px); box-shadow: 0 20px 35px rgba(2,16,40,.2); }
+.classroom-card:hover::before { transform: scale(1.15); }
+.classroom-tone-0 { background: linear-gradient(135deg,#093a70,#075c88); }
+.classroom-tone-1 { background: linear-gradient(135deg,#293569,#45458e); }
+.classroom-tone-2 { background: linear-gradient(135deg,#093b55,#05657b); }
+.classroom-book { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 15px; background: rgba(255,255,255,.13); }
+.classroom-enter { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgba(255,255,255,.22); border-radius: 14px; padding: 14px 16px; font-size: 14px; font-weight: 600; background: rgba(255,255,255,.1); margin-top: auto; }
+.classroom-card p { margin-bottom: 24px; }
+.student-tool-link { display: flex; align-items: center; gap: 14px; padding: 20px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); font-size: 14px; }
+.student-tool-link:hover { border-color: var(--primary); transform: translateY(-2px); }
+.student-empty { padding: 36px 24px; border: 1px dashed var(--border); border-radius: 24px; text-align: center; background: var(--card); }
+.student-utilities { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; padding: 4px 0 10px; }
+.is-collapsed .portal-sidebar .student-utilities { flex-direction: column; align-items: center; }
+.student-floating-controls { position: fixed; top: 14px; right: 14px; z-index: 32; }
+[data-portal="student"] .portal-sidebar { background: linear-gradient(180deg,var(--card),color-mix(in srgb,var(--card) 94%,#0479b4)); }
+[data-portal="student"] .portal-content { padding-top: 16px; }
+@media (max-width: 1023px) {
+  [data-portal="student"] .portal-content { padding-top: 62px; }
+  .student-welcome { padding-top: 0; }
+}
+@media (max-width: 767px) {
+  .student-welcome { flex-direction: column; align-items: stretch; gap: 20px; }
+  .student-practice-link { min-width: 0; }
+  .classroom-card { min-height: 290px; padding: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .classroom-card, .classroom-card::before, .student-practice-link, .student-tool-link { transition: none !important; transform: none !important; }
+}
+/* UX/UI 3: inicio, catálogo y evaluaciones con objetivos distintos. */
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .17em; color: var(--primary); }
+.workspace-panel { padding: 24px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); }
+.workspace-search { display: flex; align-items: center; gap: 12px; min-width: 200px; height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--background); color: var(--muted-foreground); }
+.workspace-search input { min-width: 0; width: 100%; height: 100%; background: transparent; color: var(--foreground); outline-offset: 0; }
+.workspace-select { max-width: 100%; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--background); font-size: 13px; }
+.workspace-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.workspace-filters button { min-height: 42px; padding: 9px 16px; border: 1px solid var(--border); border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--background); }
+.workspace-filters button[aria-pressed=true], .portal-icon[aria-pressed=true] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.workspace-action, .workspace-secondary { min-height: 44px; padding: 12px 18px; border-radius: 12px; font-weight: 600; font-size: 13px; }
+.workspace-action { background: var(--primary); color: var(--primary-foreground); }
+.workspace-secondary { border: 1px solid var(--border); background: var(--background); }
+.workspace-action:disabled, .workspace-secondary:disabled { opacity: .4; }
+.catalog-count { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 30px; font-weight: 600; padding: 14px 24px; border: 1px solid var(--border); border-radius: 22px; background: var(--card); white-space: nowrap; }
+.catalog-count small { font-size: 11px; color: var(--muted-foreground); }
+.course-progress { width: 100%; height: 5px; accent-color: white; border-radius: 8px; overflow: hidden; }
+.course-progress::-webkit-progress-bar { background: #ffffff26; }
+.course-progress::-webkit-progress-value { background: white; border-radius: 8px; }
+.course-list .classroom-card { min-height: 0; }
+.home-focus-grid { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 20px; }
+.home-resume { position: relative; overflow: hidden; padding: 30px; border: 1px solid #ffffff20; border-radius: 26px; background: radial-gradient(ellipse at 100% 0%,#1497be55,transparent 60%), linear-gradient(120deg,#123768,#153259); color: white; }
+.home-resume .eyebrow { color: #78e9ff; }
+.home-play { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 15px; background: #ffffff15; color: #78e9ff; }
+.agenda-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px; background: var(--background); border-radius: 15px; }
+.agenda-evaluations { display: flex; align-items: center; gap: 12px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+.assessment-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.assessment-counter { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; padding: 20px; border-radius: 18px; border: 1px solid var(--border); background: var(--card); }
+.assessment-counter[aria-pressed=true] { box-shadow: inset 0 0 0 1px var(--primary); background: color-mix(in srgb,var(--primary) 9%,var(--card)); }
+.assessment-card { display: flex; flex-direction: column; padding: 24px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); box-shadow: 0 10px 25px #00102a08; transition: transform .2s, border-color .2s; }
+.assessment-card:hover { transform: translateY(-3px); border-color: var(--primary); }
+.assessment-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 9px; background: var(--muted); color: var(--muted-foreground); }
+.state-available, .state-graded { background: color-mix(in srgb,var(--primary) 13%,var(--card)); color: var(--primary); }
+.state-upcoming { background: color-mix(in srgb,#7b71dc 15%,var(--card)); color: var(--foreground); }
+.assessment-open { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; width: 100%; margin-top: auto; padding: 12px 15px; border: 1px solid var(--border); border-radius: 12px; font-size: 13px; font-weight: 600; background: var(--background); }
+.assessment-open:hover { background: var(--primary); color: var(--primary-foreground); }
+.assessment-dialog { width: min(760px,calc(100vw - 24px)); }
+.assessment-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.assessment-detail-body { min-height: 240px; }
+.assessment-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 22px 0; font-size: 13px; }
+.assessment-facts dt { color: var(--muted-foreground); font-size: 11px; margin-bottom: 5px; }
+.assessment-facts dd { font-weight: 600; }
+@media (min-width: 768px) {
+ .course-list .classroom-card { display: grid; grid-template-columns: 180px minmax(0,1fr) 220px; gap: 12px 24px; align-items: center; padding: 20px; }
+ .course-list .classroom-card > h3 { margin: 0; }
+ .course-list .classroom-card > p { grid-column: 2; margin: 0; }
+ .course-list .classroom-card > div:nth-last-child(2) { grid-column: 3; grid-row: 1; margin: 0; }
+ .course-list .classroom-enter { grid-column: 3; grid-row: 2; margin: 0; }
+}
+@media (max-width: 900px) { .home-focus-grid { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 600px) { .workspace-panel { padding: 18px; } .assessment-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } .assessment-counter { padding: 16px; } .home-resume { padding: 24px; } .catalog-count { align-self: flex-start; } .assessment-facts { grid-template-columns: minmax(0,1fr); } }
+@media (prefers-reduced-motion: reduce) { .assessment-card { transition: none; transform: none; } }

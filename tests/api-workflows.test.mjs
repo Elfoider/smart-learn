@@ -140,3 +140,73 @@ test('API: el tutor recibe contenido publicado y nunca observaciones internas', 
   assert.ok(!lastInput.contents.includes('INTERNAL-NOTE-MUST-NOT-LEAK'));
   assert.ok(!lastInput.contents.includes('Clase de otra sección'));
 });
+
+test('API: verdadero o falso recupera el formato, valida el índice y registra un intento', async t => {
+  setup(t);
+  generated = JSON.stringify({
+    question: 'Una clave primaria identifica de forma única una fila.',
+    options: ['Verdadero', 'Falso'],
+    correctIndex: 0,
+    explanation: 'Una clave primaria identifica cada fila de la tabla.',
+    hint: 'Piensa en cómo se identifica una fila.',
+    secondHint: 'Compara dos registros de la misma tabla.',
+  });
+  const result = await practice.POST(post({action:'generate', courseId:'course1', lessonId:'lesson1', format:'true-false'}));
+  assert.equal(result.status, 200);
+  const exercise = await result.json();
+  assert.deepEqual(exercise.options, ['Verdadero', 'Falso']);
+  assert.equal(exercise.format, 'true-false');
+  const catalog = await (await practice.GET(new Request('http://localhost/api?courseId=course1', {headers:{Authorization:'Bearer student'}}))).json();
+  assert.equal(catalog.pending.format, 'true-false');
+  assert.equal('correctIndex' in catalog.pending, false);
+  assert.equal((await practice.POST(post({action:'submit', challengeId:exercise.challengeId, answer:'2'}))).status, 400);
+  const submitted = await practice.POST(post({action:'submit', challengeId:exercise.challengeId, answer:'0'}));
+  assert.equal(submitted.status, 200);
+  assert.equal((await submitted.json()).correct, true);
+  assert.equal(records.get('users/student/playgroundSessions/course1--real').attempts, 1);
+});
+
+test('API docente limita la referencia y la entrega al modelo como contenido', async t => {
+  setup(t);
+  const input = {courseId:'course1', task:'plan', topic:'Clave primaria'};
+  assert.equal((await teacher.POST(post({...input, reference:'x'.repeat(3001)}, 'teacher'))).status, 400);
+  assert.equal(calls, 0);
+  const reference = 'Una clave primaria identifica cada fila.';
+  assert.equal((await teacher.POST(post({...input, reference}, 'teacher'))).status, 200);
+  assert.equal(JSON.parse(lastInput.contents).reference, reference);
+  assert.match(lastInput.systemInstruction, /archivo de referencia/);
+});
+
+test('API docente genera una planificación estructurada para el formulario', async t => {
+  setup(t);
+  const draft = {
+    title: 'Introducción a claves primarias',
+    unit: 'Unidad 1',
+    objectives: ['Identificar una clave primaria'],
+    contents: ['Identificadores únicos'],
+    lessonContent: 'Cada fila se identifica con un valor único dentro de su tabla.',
+    activities: ['Seleccionar una clave para la tabla de estudiantes'],
+    visibleToStudents: true,
+  };
+  generated = '```json\n' + JSON.stringify(draft) + '\n```';
+  const payload = {courseId:'course1', task:'plan', topic:'Clave primaria', structuredPlan:true};
+  const response = await teacher.POST(post(payload, 'teacher'));
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(lastInput.responseMimeType, 'application/json');
+  assert.deepEqual(result.lesson.activities, draft.activities);
+  assert.equal('visibleToStudents' in result.lesson, false);
+  assert.match(result.result, /Introducción a claves primarias/);
+  generated = '{}';
+  assert.equal((await teacher.POST(post(payload, 'teacher'))).status, 422);
+});
+
+test('API docente usa una plantilla específica para temarios y mantiene la salida de texto', async t => {
+  setup(t);
+  generated = 'Unidad 1. Fundamentos de bases de datos.';
+  const response = await teacher.POST(post({courseId:'course1', task:'syllabus', topic:'Bases de datos'}, 'teacher'));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).result, generated);
+  assert.match(lastInput.systemInstruction, /temario progresivo/);
+  assert.equal(lastInput.responseMimeType, undefined);
+});

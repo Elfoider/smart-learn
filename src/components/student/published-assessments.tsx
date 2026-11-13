@@ -1,49 +1,65 @@
 "use client";
-
-import { useMemo } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowRight, CalendarDays, Check, ClipboardCheck, Clock3, Search, X } from "lucide-react";
+import { useStudentWorkspace, type StudentGrade } from "@/hooks/use-student-workspace";
 import { useMinuteClock } from "@/hooks/use-minute-clock";
-import { collection, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
-import { useStudentEnrollments, useLiveCourse, type Enrollment } from "@/components/student/live-courses";
-import { useLiveQuery } from "@/lib/firebase/use-live-query";
+import { assessmentLabels, assessmentState, formatAcademicDate, instructionSteps, type AssessmentState } from "@/lib/student/experience";
 import type { TeacherAssessment } from "@/types/teacher-assessment";
+const types = { exam:"Examen", quiz:"Cuestionario", workshop:"Taller", project:"Proyecto", presentation:"Presentación", practice:"Práctica", assignment:"Actividad" };
+const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export function PublishedAssessments() {
-  const enrollments = useStudentEnrollments();
-  const active = enrollments.data.filter(item => item.status === "active");
-  return <section className="space-y-5">
-    <header><h1 className="text-3xl font-semibold">Mis evaluaciones</h1><p className="mt-2 text-muted-foreground">Actividades, instrucciones y rúbricas publicadas para tus materias.</p></header>
-    {enrollments.loading && <p role="status">Cargando inscripciones…</p>}
-    {enrollments.error && <p role="alert">{enrollments.error}</p>}
-    {!enrollments.loading && !enrollments.error && !active.length && <p>Aún no tienes materias inscritas.</p>}
-    {active.map(enrollment => <CourseAssessments key={enrollment.id} enrollment={enrollment} />)}
+  const w = useStudentWorkspace("assessments");
+  const now = useMinuteClock();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [course, setCourse] = useState("all");
+  const [selected, setSelected] = useState<string | null>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const published = w.assessments.data.filter(a => a.status !== "draft");
+  const gradeFor = (a: TeacherAssessment) => w.grades.data.find(g => g.assessmentId === a.id && g.courseId === a.courseId);
+  const stateFor = (a: TeacherAssessment) => assessmentState(a, now, !!gradeFor(a));
+  const courseName = (id: string) => w.courses.find(c => c.id === id)?.course?.name || "Materia inscrita";
+  const matching = published.filter(a => (course === "all" || a.courseId === course) && (filter === "all" || stateFor(a) === filter) && normalize(`${a.title} ${courseName(a.courseId)}`).includes(normalize(search.trim()))).sort((a,b) => {
+    const rank = { available:0, upcoming:1, graded:2, closed:3, archived:4 };
+    return rank[stateFor(a)] - rank[stateFor(b)] || (Date.parse(a.closesAt) || Infinity) - (Date.parse(b.closesAt) || Infinity) || a.title.localeCompare(b.title);
+  });
+  const item = published.find(a => a.id === selected);
+  const loading = w.loading || w.assessments.loading || w.grades.loading || !now;
+  return <section className="student-lobby space-y-6">
+    <header className="student-welcome"><div><p className="eyebrow">Organiza tu siguiente entrega</p><h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Mis evaluaciones</h1><p className="mt-3 text-muted-foreground">Encuentra qué hacer, revisa las indicaciones y conoce cómo se evaluará tu trabajo.</p></div><ClipboardCheck aria-hidden="true" className="hidden h-12 w-12 text-primary sm:block" /></header>
+    <div className="assessment-summary">{([["available","Disponibles"],["upcoming","Próximas"],["closed","Finalizadas"],["graded","Con resultado"]] as const).map(([value,label]) => <button key={value} onClick={() => setFilter(filter === value ? "all" : value)} aria-pressed={filter === value} className="assessment-counter"><span className="text-2xl font-semibold">{loading || w.assessments.error || w.grades.error ? "—" : published.filter(a => stateFor(a) === value).length}</span><span className="text-xs text-muted-foreground">{label}</span></button>)}</div>
+    <section aria-label="Buscar y filtrar evaluaciones" className="workspace-panel space-y-4"><div className="flex flex-wrap gap-3"><label className="workspace-search min-w-0 flex-1"><Search aria-hidden="true" className="h-4 w-4" /><input type="search" aria-label="Buscar evaluaciones" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar actividad o materia" /></label><select className="workspace-select" aria-label="Filtrar evaluaciones por materia" value={course} onChange={e => setCourse(e.target.value)}><option value="all">Todas las materias</option>{w.courses.map(c => <option key={c.id} value={c.id}>{c.course?.name || "Materia inscrita"}</option>)}</select></div><div className="workspace-filters">{[["all","Todas"],["available","Disponibles"],["upcoming","Próximas"],["closed","Finalizadas"],["graded","Con resultado"],["archived","Archivadas"]].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} aria-pressed={filter === value}>{label}</button>)}</div></section>
+    {(w.error || w.assessments.error || w.grades.error) && <p role="alert" className="workspace-panel">No se pudo cargar toda la información. Recarga para reintentar; algunos resultados pueden no estar disponibles.</p>}
+    {loading && <p role="status" className="workspace-panel">Consultando tus evaluaciones…</p>}
+    <p className="text-xs text-muted-foreground" aria-live="polite">{loading ? "" : `${matching.length} ${matching.length === 1 ? "evaluación encontrada" : "evaluaciones encontradas"}`}</p>
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{matching.map(a => {
+      const state = stateFor(a);
+      return <article key={a.id} className="assessment-card"><div className="flex flex-wrap items-center justify-between gap-2"><span className={`assessment-badge state-${state}`}>{now ? assessmentLabels[state] : "Consultando estado…"}</span><span className="text-xs text-muted-foreground">{types[a.type] || "Actividad"}</span></div><p className="mt-5 text-xs font-semibold text-primary">{courseName(a.courseId)}</p><h2 className="mt-2 text-lg font-semibold">{a.title}</h2><p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">{a.description || "Revisa las instrucciones y los criterios de esta actividad."}</p><div className="my-5 space-y-2 text-xs text-muted-foreground"><p className="flex items-center gap-2"><CalendarDays aria-hidden="true" className="h-4 w-4" />{state === "upcoming" ? `Apertura: ${formatAcademicDate(a.opensAt)}` : `Cierre: ${formatAcademicDate(a.closesAt)}`}</p><p>{a.maxScore} puntos · Ponderación {a.weightPercentage}%</p></div><button className="assessment-open" aria-haspopup="dialog" onClick={() => {setSelected(a.id);dialog.current?.showModal();}}>{state === "graded" ? "Ver resultado" : "Ver actividad"}<ArrowRight className="h-4 w-4" aria-hidden="true" /></button></article>;
+    })}</div>
+    {!loading && !w.error && !w.assessments.error && !matching.length && <div className="student-empty"><ClipboardCheck aria-hidden="true" className="mx-auto h-9 w-9 text-primary" /><h2 className="mt-4 text-xl font-semibold">{published.length ? "No hay actividades con estos filtros" : "Todo despejado por aquí"}</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">{published.length ? "Prueba otra materia o revisa las actividades finalizadas." : "Tus evaluaciones aparecerán cuando el docente las publique. Mientras tanto, puedes estudiar o practicar."}</p>{published.length ? <button className="workspace-action mt-5" onClick={() => {setFilter("all");setSearch("");setCourse("all");}}>Ver todas las evaluaciones</button> : <Link href="/student/courses" className="workspace-action mt-5 inline-block">Explorar mis materias</Link>}</div>}
+    <dialog ref={dialog} className="portal-dialog assessment-dialog" aria-labelledby="activity-title" onClose={() => setSelected(null)}>
+      <div className="assessment-dialog-heading"><p className="eyebrow">Detalle de la actividad</p><button className="portal-icon" aria-label="Cerrar actividad" onClick={() => dialog.current?.close()}><X className="h-5 w-5" /></button></div>
+      {item ? <AssessmentDetail key={item.id} item={item} state={stateFor(item)} courseName={courseName(item.courseId)} grade={gradeFor(item)} /> : <p id="activity-title" className="py-8">Esta evaluación ya no está disponible.</p>}
+    </dialog>
   </section>;
 }
-
-function CourseAssessments({ enrollment }: { enrollment: Enrollment }) {
-  const now = useMinuteClock();
-  const course = useLiveCourse(enrollment.courseId);
-  const sectionRef = useMemo(() => query(collection(db, "assessments"), where("courseId", "==", enrollment.courseId), where("sectionId", "==", enrollment.sectionId), where("visibleToStudents", "==", true)), [enrollment.courseId, enrollment.sectionId]);
-  const sharedRef = useMemo(() => query(collection(db, "assessments"), where("courseId", "==", enrollment.courseId), where("sectionId", "==", null), where("visibleToStudents", "==", true)), [enrollment.courseId]);
-  const section = useLiveQuery<TeacherAssessment>(sectionRef);
-  const shared = useLiveQuery<TeacherAssessment>(sharedRef);
-  const assessments = [...new Map([...section.data, ...shared.data].map(item => [item.id, item])).values()].sort((a,b) => (a.closesAt || "").localeCompare(b.closesAt || ""));
-  const statuses: Record<string,string> = { draft: "Borrador publicado", scheduled: "Programada", open: "Abierta", closed: "Cerrada", graded: "Calificada", archived: "Archivada" };
-  return <section className="rounded-3xl border border-border bg-card p-5 sm:p-7">
-    <h2 className="text-xl font-semibold">{course.data[0]?.name || "Materia inscrita"}</h2>
-    {(section.loading || shared.loading) && <p role="status" className="mt-3">Cargando evaluaciones…</p>}
-    {(section.error || shared.error) && <p role="alert" className="mt-3 text-red-500">No se pudieron cargar las evaluaciones. Recarga para reintentar.</p>}
-    {!section.loading && !shared.loading && !section.error && !shared.error && !assessments.length && <p className="mt-3 text-muted-foreground">Tu docente aún no ha publicado evaluaciones para esta sección.</p>}
-    <div className="mt-4 space-y-4">{assessments.map(item => <article key={item.id} className="rounded-2xl border border-border bg-background p-5">
-      <p className="text-xs font-semibold text-primary">{item.status === "open" && item.closesAt && new Date(item.closesAt).getTime() < now ? "Plazo finalizado" : statuses[item.status] || "Publicada"} · {item.maxScore} puntos · Ponderación {item.weightPercentage}%</p>
-      <h3 className="mt-2 text-lg font-semibold">{item.title}</h3>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-7">{item.description}</p>
-      <p className="mt-3 text-sm text-muted-foreground">Apertura: {item.opensAt?.replace("T", " ") || "Por confirmar"} · Cierre: {item.closesAt?.replace("T", " ") || "Por confirmar"}</p>
-      <h4 className="mt-4 font-semibold">Instrucciones</h4><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{item.instructions || "Consulta las indicaciones con tu docente."}</p>
-      {item.rubric?.length > 0 && <div className="mt-4"><h4 className="font-semibold">Rúbrica de evaluación</h4><ul className="mt-2 space-y-2">{item.rubric.map(criterion => <li key={criterion.id} className="rounded-xl bg-muted/50 p-3 text-sm"><strong>{criterion.title} · {criterion.points} puntos</strong><p className="mt-1">{criterion.description}</p></li>)}</ul></div>}
-      <p className="mt-4 text-sm text-muted-foreground">{item.deliveryMode === "manual" ? "Entrega según las indicaciones del docente; la calificación se registra después de su revisión." : "Consulta con tu docente el enlace y las instrucciones de entrega. Esta actividad no tiene un cuestionario conectado en el prototipo."}</p>
-      <Link className="mt-4 inline-block text-sm font-semibold text-primary underline" href={`/student/courses/${encodeURIComponent(enrollment.courseId)}`}>Estudiar esta materia</Link>
-    </article>)}</div>
-  </section>;
+export function AssessmentDetail({ item, state, courseName, grade }: { item: TeacherAssessment; state: AssessmentState; courseName: string; grade?: StudentGrade }) {
+  const [tab, setTab] = useState(state === "graded" ? "result" : "overview");
+  const [step, setStep] = useState(0);
+  const [reviewed, setReviewed] = useState<number[]>([]);
+  const steps = instructionSteps(item.instructions || "Consulta las indicaciones con tu docente.");
+  const currentStep = Math.min(step, steps.length - 1);
+  return <>
+    <p className="mt-2 text-sm text-primary">{courseName}</p><h2 id="activity-title" className="mt-2 text-2xl font-semibold">{item.title}</h2><div className="mt-3"><span className={`assessment-badge state-${state}`}>{assessmentLabels[state]}</span></div>
+    <div className="workspace-filters my-6" aria-label="Secciones de la evaluación">{[["overview","Resumen"],["instructions","Instrucciones"],["rubric","Cómo me evaluarán"],["result","Mi resultado"]].map(([value,label]) => <button key={value} aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</button>)}</div>
+    <section aria-label={{overview:"Resumen de la actividad",instructions:"Instrucciones de la actividad",rubric:"Criterios de evaluación",result:"Resultado publicado"}[tab]} className="assessment-detail-body">
+      {tab === "overview" && <><p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{item.description}</p><dl className="assessment-facts"><div><dt>Apertura</dt><dd>{formatAcademicDate(item.opensAt)}</dd></div><div><dt>Cierre</dt><dd>{formatAcademicDate(item.closesAt)}</dd></div><div><dt>Puntuación máxima</dt><dd>{item.maxScore} puntos</dd></div><div><dt>Ponderación</dt><dd>{item.weightPercentage}%</dd></div>{item.durationMinutes > 0 && <div><dt>Duración indicada</dt><dd>{item.durationMinutes} minutos</dd></div>}</dl><div className="rounded-2xl bg-muted p-4 text-sm leading-6"><strong>Cómo entregar</strong><p className="mt-2">{item.deliveryMode === "manual" ? "Entrega tu trabajo por el medio indicado por tu docente. Revisa las instrucciones antes de prepararlo." : "Consulta las instrucciones del docente para acceder al cuestionario o enlace de entrega. Solicítale el enlace si no aparece indicado."}</p></div><button className="workspace-action mt-5" onClick={() => setTab("instructions")}>Revisar instrucciones →</button></>}
+      {tab === "instructions" && <><div className="mb-4 flex items-center justify-between gap-3"><h3 className="font-semibold">Lee y prepara tu actividad</h3><span className="text-xs text-muted-foreground">{currentStep + 1} de {steps.length}</span></div><p className="rounded-2xl border border-border bg-background p-5 text-sm leading-8 whitespace-pre-wrap">{steps[currentStep]}</p><label className="my-5 flex cursor-pointer items-center gap-3 text-sm"><input type="checkbox" checked={reviewed.includes(currentStep)} onChange={e => setReviewed(e.target.checked ? [...reviewed,currentStep] : reviewed.filter(s => s !== currentStep))} className="h-4 w-4 accent-[var(--primary)]" />Ya revisé esta indicación</label><div className="flex justify-between gap-3"><button className="workspace-secondary" disabled={currentStep === 0} onClick={() => setStep(currentStep - 1)}>Anterior</button><button className="workspace-action" disabled={currentStep === steps.length - 1} onClick={() => setStep(currentStep + 1)}>Siguiente</button></div><p className="mt-5 text-xs leading-5 text-muted-foreground"><Check className="mr-1 inline h-3 w-3" aria-hidden="true" />{reviewed.length} indicaciones revisadas. Esta lista es temporal y sirve para organizarte; la entrega se realiza según lo indicado por tu docente.</p></>}
+      {tab === "rubric" && <><h3 className="font-semibold">Qué revisará tu docente</h3>{item.rubric?.length ? <div className="mt-4 space-y-3">{item.rubric.map(c => <article key={c.id} className="rounded-2xl border border-border p-4"><div className="flex items-start justify-between gap-3"><h4 className="font-semibold text-sm">{c.title}</h4><span className="shrink-0 rounded-full bg-primary/10 px-3 py-1 text-xs text-primary">{c.points} pts</span></div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{c.description}</p></article>)}</div> : <p className="mt-3 text-sm text-muted-foreground">Tu docente aún no ha publicado una rúbrica para esta actividad.</p>}</>}
+      {tab === "result" && <>{grade ? <><p className="eyebrow">Calificación publicada</p><p className="mt-4 text-4xl font-semibold">{Number(grade.normalizedPercentage).toFixed(1)}<span className="text-xl text-muted-foreground">%</span></p><h3 className="mt-6 font-semibold">Comentarios de tu docente</h3><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{grade.feedback || "No se añadieron comentarios a esta calificación."}</p></> : <div className="student-empty"><Clock3 className="mx-auto h-7 w-7 text-primary" aria-hidden="true" /><h3 className="mt-3 font-semibold">Tu resultado aparecerá aquí</h3><p className="mt-2 text-sm text-muted-foreground">Se mostrará cuando el docente publique tu calificación.</p></div>}</>}
+    </section>
+    <Link className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary" href={`/student/courses/${encodeURIComponent(item.courseId)}`}>Repasar esta materia<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+  </>;
 }

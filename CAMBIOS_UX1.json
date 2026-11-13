@@ -1,0 +1,21 @@
+[
+  "APLICAR_UX1.ps1",
+  "AUDITORIA_UX1.md",
+  "CAMBIOS_UX1.json",
+  "GUIA_UX1.md",
+  "public/brand/horizontal-dark.png",
+  "public/brand/horizontal-light.png",
+  "public/brand/icon.png",
+  "src/app/(student)/student/page.tsx",
+  "src/app/globals.css",
+  "src/app/icon.png",
+  "src/app/layout.tsx",
+  "src/components/admin/admin-console.tsx",
+  "src/components/admin/institution-notice.tsx",
+  "src/components/brand/brand-mark.tsx",
+  "src/components/navigation/portal-frame.tsx",
+  "src/components/student/student-shell.tsx",
+  "src/components/teacher/teacher-assessment-workspace.tsx",
+  "src/components/teacher/teacher-shell.tsx",
+  "src/hooks/use-portal-preference.ts"
+]
