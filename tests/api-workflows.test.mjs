@@ -176,3 +176,37 @@ test('API docente limita la referencia y la entrega al modelo como contenido', a
   assert.equal(JSON.parse(lastInput.contents).reference, reference);
   assert.match(lastInput.systemInstruction, /archivo de referencia/);
 });
+
+test('API docente genera una planificación estructurada para el formulario', async t => {
+  setup(t);
+  const draft = {
+    title: 'Introducción a claves primarias',
+    unit: 'Unidad 1',
+    objectives: ['Identificar una clave primaria'],
+    contents: ['Identificadores únicos'],
+    lessonContent: 'Cada fila se identifica con un valor único dentro de su tabla.',
+    activities: ['Seleccionar una clave para la tabla de estudiantes'],
+    visibleToStudents: true,
+  };
+  generated = '```json\n' + JSON.stringify(draft) + '\n```';
+  const payload = {courseId:'course1', task:'plan', topic:'Clave primaria', structuredPlan:true};
+  const response = await teacher.POST(post(payload, 'teacher'));
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(lastInput.responseMimeType, 'application/json');
+  assert.deepEqual(result.lesson.activities, draft.activities);
+  assert.equal('visibleToStudents' in result.lesson, false);
+  assert.match(result.result, /Introducción a claves primarias/);
+  generated = '{}';
+  assert.equal((await teacher.POST(post(payload, 'teacher'))).status, 422);
+});
+
+test('API docente usa una plantilla específica para temarios y mantiene la salida de texto', async t => {
+  setup(t);
+  generated = 'Unidad 1. Fundamentos de bases de datos.';
+  const response = await teacher.POST(post({courseId:'course1', task:'syllabus', topic:'Bases de datos'}, 'teacher'));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).result, generated);
+  assert.match(lastInput.systemInstruction, /temario progresivo/);
+  assert.equal(lastInput.responseMimeType, undefined);
+});

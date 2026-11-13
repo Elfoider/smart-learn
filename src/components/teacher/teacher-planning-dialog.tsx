@@ -21,6 +21,7 @@ import {
   type ReactNode,
 } from "react";
 
+import type { GeneratedLesson } from "@/lib/teacher/ai-drafts";
 import { cn } from "@/lib/utils/cn";
 import type {
   AcademicCourse,
@@ -34,6 +35,7 @@ import type {
 
 interface TeacherPlanningDialogProps {
   plan?: TeacherLessonPlan;
+  generatedDraft?: GeneratedLesson & { courseId: string };
   courses: AcademicCourse[];
   sections: AcademicSection[];
   saving: boolean;
@@ -88,6 +90,7 @@ function textToItems(value: string) {
 
 export function TeacherPlanningDialog({
   plan,
+  generatedDraft,
   courses,
   sections,
   saving,
@@ -103,6 +106,7 @@ export function TeacherPlanningDialog({
 
   const initialCourseId =
     plan?.courseId ??
+    generatedDraft?.courseId ??
     firstCourse?.id ??
     "";
 
@@ -115,11 +119,11 @@ export function TeacherPlanningDialog({
     );
 
   const [title, setTitle] = useState(
-    plan?.title ?? "",
+    plan?.title ?? generatedDraft?.title ?? "",
   );
 
   const [unit, setUnit] = useState(
-    plan?.unit ?? "",
+    plan?.unit ?? generatedDraft?.unit ?? "",
   );
 
   const [weekLabel, setWeekLabel] =
@@ -147,13 +151,13 @@ export function TeacherPlanningDialog({
   const [objectives, setObjectives] =
     useState(
       itemsToText(
-        plan?.objectives,
+        plan?.objectives ?? generatedDraft?.objectives,
       ),
     );
 
   const [contents, setContents] =
     useState(
-      itemsToText(plan?.contents),
+      itemsToText(plan?.contents ?? generatedDraft?.contents),
     );
 
   const [strategies, setStrategies] =
@@ -171,7 +175,7 @@ export function TeacherPlanningDialog({
   const [activities, setActivities] =
     useState(
       itemsToText(
-        plan?.activities,
+        plan?.activities ?? generatedDraft?.activities,
       ),
     );
 
@@ -182,7 +186,7 @@ export function TeacherPlanningDialog({
     plan?.evaluationEvidence ?? "",
   );
 
-  const [lessonContent, setLessonContent] = useState(plan?.lessonContent ?? "");
+  const [lessonContent, setLessonContent] = useState(plan?.lessonContent ?? generatedDraft?.lessonContent ?? "");
   const [notes, setNotes] =
     useState(plan?.notes ?? "");
 

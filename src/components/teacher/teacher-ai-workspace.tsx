@@ -4,12 +4,20 @@ import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useTeacherCourses } from "@/hooks/use-teacher-courses";
+import { useTeacherPlans } from "@/hooks/use-teacher-plans";
+import { TeacherPlanningDialog } from "./teacher-planning-dialog";
+import { teacherDraftTasks, teacherDraftTemplates, type GeneratedLesson, type TeacherDraftTask } from "@/lib/teacher/ai-drafts";
 
 export function TeacherAiWorkspace() {
   const { user } = useAuth();
-  const { courses } = useTeacherCourses();
+  const { courses, sections, loading: coursesLoading, error: courseError } = useTeacherCourses();
+  const { createPlan, editPlan, saving } = useTeacherPlans();
   const [courseId, setCourseId] = useState("");
-  const [task, setTask] = useState<"plan" | "activity" | "rubric">("plan");
+  const [task, setTask] = useState<TeacherDraftTask>("plan");
+  const [structuredPlan, setStructuredPlan] = useState(true);
+  const [generatedDraft, setGeneratedDraft] = useState<(GeneratedLesson & { courseId: string }) | null>(null);
+  const [reviewDraft, setReviewDraft] = useState(false);
+  const [generationError, setGenerationError] = useState("");
   const [topic, setTopic] = useState("");
   const [instructions, setInstructions] = useState("");
   const [result, setResult] = useState("");
@@ -55,35 +63,80 @@ export function TeacherAiWorkspace() {
     event.preventDefault();
     if (!user || loading || reading) return;
     setLoading(true);
+    setGenerationError("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/ai/teacher", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ courseId, task, topic, instructions, reference }) });
+      const response = await fetch("/api/ai/teacher", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ courseId, task, topic, instructions, reference, structuredPlan: task === "plan" && structuredPlan }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "No se pudo generar.");
       setResult(payload.result);
+      setGeneratedDraft(payload.lesson ? { ...payload.lesson, courseId } : null);
       setResultTitle(topic.trim());
       setResultCourse(courses.find(course => course.id === courseId)?.name ?? "");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "No fue posible generar el borrador."); }
+    } catch (error) { setGenerationError(error instanceof Error ? error.message : "No fue posible generar el borrador."); }
     finally { setLoading(false); }
   }
   return <div className="space-y-6">
     <header className="rounded-3xl bg-[#071a22] p-8 text-white"><h1 className="text-3xl font-semibold">Asistente IA docente</h1><p className="mt-2 text-white/70">Genera borradores basados en tu materia y planificaciones. Revisa el resultado antes de utilizarlo.</p></header>
     <form onSubmit={submit} className="grid gap-4 rounded-3xl border border-border bg-card p-6">
-      <select required aria-label="Materia" value={courseId} onChange={e => setCourseId(e.target.value)} className="rounded-xl border p-3"><option value="">Selecciona materia</option>{courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-      <select aria-label="Tipo de borrador" value={task} onChange={e => setTask(e.target.value as typeof task)} className="rounded-xl border p-3"><option value="plan">Plan de clase</option><option value="activity">Actividad</option><option value="rubric">Rúbrica</option></select>
-      <input required minLength={3} maxLength={220} placeholder="Tema" value={topic} onChange={e => setTopic(e.target.value)} className="rounded-xl border p-3" />
-      <textarea maxLength={1200} placeholder="Instrucciones adicionales" value={instructions} onChange={e => setInstructions(e.target.value)} className="min-h-28 rounded-xl border p-3" />
+      <fieldset disabled={loading || reading} className="grid min-w-0 gap-4">
+        <label className="grid gap-1 text-sm font-medium">Asignatura
+          <select required aria-label="Asignatura" value={courseId} onChange={event => setCourseId(event.target.value)} className="rounded-xl border bg-background p-3">
+            <option value="">Selecciona asignatura</option>
+            {courses.filter(course => course.status !== "archived").map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium">Qué quieres generar
+          <select aria-label="Qué quieres generar" value={task} onChange={event => setTask(event.target.value as TeacherDraftTask)} className="rounded-xl border bg-background p-3">
+            {teacherDraftTasks.map(value => <option key={value} value={value}>{teacherDraftTemplates[value].label}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium">Tema
+          <input required minLength={3} maxLength={220} aria-describedby="teacher-topic-hint" value={topic} onChange={event => setTopic(event.target.value)} className="rounded-xl border bg-background p-3" />
+        </label>
+        <p id="teacher-topic-hint" className="text-sm text-muted-foreground">{teacherDraftTemplates[task].hint}</p>
+        <label className="grid gap-1 text-sm font-medium">Instrucciones adicionales
+          <textarea maxLength={1200} value={instructions} onChange={event => setInstructions(event.target.value)} className="min-h-28 rounded-xl border bg-background p-3" />
+        </label>
+        {task === "plan" && <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={structuredPlan} onChange={event => setStructuredPlan(event.target.checked)} />
+          Preparar para el formulario de Planificación
+        </label>}
+      </fieldset>
+      {courseError && <p role="alert" className="text-sm text-danger">{courseError}</p>}
       <div className="rounded-xl border border-border p-4">
         <label htmlFor="teacher-reference" className="block text-sm font-medium">Archivo de referencia (opcional)</label>
         <input ref={fileInput} id="teacher-reference" type="file" accept=".txt,text/plain" disabled={reading || loading} onChange={readReference} className="mt-2 block max-w-full text-sm" />
         <p className="mt-2 text-xs text-muted-foreground">TXT en UTF-8, hasta 16 KB. Se usan como máximo 3000 caracteres para generar el borrador.</p>
         {referenceName && <button type="button" onClick={clearReference} disabled={loading} className="mt-2 text-sm text-primary underline">Quitar referencia</button>}
       </div>
-      <button disabled={loading || reading} className="rounded-xl bg-teal-500 px-5 py-3 font-semibold text-slate-950 disabled:opacity-50">{loading ? "Generando…" : "Generar borrador"}</button>
+      <button disabled={loading || reading || coursesLoading || !courseId} className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground disabled:opacity-50">
+        {loading ? "Generando…" : "Generar borrador"}
+      </button>
+      {loading && <p role="status" className="text-sm text-muted-foreground">La primera consulta puede tardar mientras inicia el modelo.</p>}
+      {generationError && <p role="alert" className="text-sm text-danger">{generationError}</p>}
     </form>
-    {result && <div className="space-y-3 rounded-3xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">Borrador editable</h2><textarea aria-label="Borrador generado" value={result} onChange={e => setResult(e.target.value)} className="min-h-96 w-full rounded-xl border p-4 leading-7" /><button onClick={() => navigator.clipboard.writeText(result).then(() => toast.success("Copiado")).catch(() => toast.error("No se pudo copiar el texto."))} className="rounded-xl border px-4 py-2">Copiar texto</button>
-      <button type="button" disabled={!result.trim()} onClick={() => openPrintView(resultTitle, resultCourse, result)} className="ml-2 rounded-xl border px-4 py-2 disabled:opacity-50">Guardar como PDF</button>
-    </div>}
+    {result && <section className="space-y-3 rounded-3xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">{generatedDraft ? "Planificación generada" : "Borrador editable"}</h2>
+      {generatedDraft && <p className="text-sm text-muted-foreground">Abre el formulario para editar el contenido, asignar fechas y seleccionar la sección.</p>}
+      <textarea aria-label="Borrador generado" value={result} readOnly={Boolean(generatedDraft)} onChange={event => setResult(event.target.value)} className="min-h-72 w-full rounded-xl border p-4 leading-7" />
+      <div className="flex flex-wrap gap-2">
+        {generatedDraft && <button type="button" disabled={loading} onClick={() => setReviewDraft(true)} className="rounded-xl bg-primary px-4 py-2 font-semibold text-primary-foreground disabled:opacity-50">Editar en Planificación</button>}
+        <button type="button" onClick={() => navigator.clipboard.writeText(result).then(() => toast.success("Copiado")).catch(() => toast.error("No se pudo copiar el texto."))} className="rounded-xl border px-4 py-2">Copiar texto</button>
+        <button type="button" disabled={!result.trim()} onClick={() => openPrintView(resultTitle, resultCourse, result)} className="rounded-xl border px-4 py-2 disabled:opacity-50">Guardar como PDF</button>
+      </div>
+    </section>}
+    {reviewDraft && generatedDraft && (
+      <TeacherPlanningDialog
+        generatedDraft={generatedDraft}
+        courses={courses}
+        sections={sections}
+        saving={saving}
+        onClose={() => setReviewDraft(false)}
+        onCreate={createPlan}
+        onUpdate={editPlan}
+      />
+    )}
   </div>;
 }
 
