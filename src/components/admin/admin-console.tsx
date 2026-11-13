@@ -8,6 +8,12 @@ import { adminModules, adminLabels, type AdminRecord, type AdminResource, type A
 import { adminCsv } from "@/lib/admin/csv";
 type Module = AdminResource | "summary" | "reports" | "adminAudit" | "aiLogs";
 const navigation = [{ id: "summary", label: "Resumen", icon: LayoutDashboard }, { id: "users", label: "Usuarios", icon: Users }, { id: "courses", label: "Materias", icon: BookOpen }, { id: "sections", label: "Secciones", icon: Layers }, { id: "enrollments", label: "Matrículas", icon: GraduationCap }, { id: "lessonPlans", label: "Clases y planificación", icon: NotebookPen }, { id: "materials", label: "Materiales", icon: FolderOpen }, { id: "onlineClasses", label: "Encuentros en línea", icon: Video }, { id: "assessments", label: "Evaluaciones y rúbricas", icon: ClipboardCheck }, { id: "grades", label: "Calificaciones", icon: ChartColumn }, { id: "attendance", label: "Asistencia", icon: CalendarCheck }, { id: "reports", label: "Reportes", icon: ChartColumn }, { id: "aiLogs", label: "Actividad de IA", icon: Bot }, { id: "adminAudit", label: "Auditoría", icon: History }, { id: "settings", label: "Configuración", icon: Settings }] as const;
+const academicSetup = [
+    { id: "courses", label: "Crear materia", icon: BookOpen },
+    { id: "sections", label: "Crear sección", icon: Layers },
+    { id: "enrollments", label: "Matricular estudiante", icon: GraduationCap },
+] as const;
+const searchableText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 const fieldClass = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15";
 const buttonClass = "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50";
 const labelFor = (value: unknown) => adminLabels[String(value)] || String(value ?? "");
@@ -107,6 +113,12 @@ export function AdminConsole() {
             dialogRef.current?.close();
     }, [editing]);
     function navigate(next: Module) { setModule(next); setCursor(null); setNextCursor(null); setSearch(""); setCourseFilter(""); setRecords([]); setEditing(undefined); }
+    function startAcademicSetup(next: (typeof academicSetup)[number]["id"]) {
+        navigate(next);
+        setValues(defaults(next, null));
+        setReason("");
+        setEditing(null);
+    }
     function open(record: AdminRecord | null) {
         if (!(module in adminModules))
             return;
@@ -139,8 +151,20 @@ export function AdminConsole() {
         }
     }
     const description = module in adminModules ? adminModules[module as AdminResource].description : module === "summary" ? "Supervisa el acceso, la oferta académica y la actividad de la plataforma." : module === "reports" ? "Indicadores por materia calculados sobre notas publicadas y asistencia registrada." : module === "aiLogs" ? "Registro de consultas admitidas y proveedor, sin guardar conversaciones ni claves." : "Consulta quién realizó cada cambio y su motivo.";
-    const filtered = records.filter(r => (!courseFilter || r.courseId === courseFilter) && JSON.stringify(r).toLowerCase().includes(search.toLowerCase()));
     const lookup = (collection: string, id: unknown) => { const r = references[collection]?.find(r => r.id === id); return r ? String(r.name || r.title || r.code || r.id) : String(id || "Todas las secciones"); };
+    const searchTerm = searchableText(search);
+    const filtered = records.filter(record => {
+        if (courseFilter && record.courseId !== courseFilter) return false;
+        if (!searchTerm) return true;
+        const names = [
+            record.courseId && lookup("courses", record.courseId),
+            record.sectionId && lookup("sections", record.sectionId),
+            record.studentId && lookup("users", record.studentId),
+            record.teacherId && lookup("users", record.teacherId),
+            record.actorId && lookup("users", record.actorId),
+        ];
+        return searchableText([JSON.stringify(record), ...names].join(" ")).includes(searchTerm);
+    });
     const title = navigation.find(n => n.id === module)?.label || "Administración";
     const resource = module in adminModules ? module as AdminResource : null;
     return <PortalFrame role="admin" items={navigation.map(n => ({ ...n, group: ["summary", "users"].includes(n.id) ? "Acceso" : ["reports", "aiLogs", "adminAudit", "settings"].includes(n.id) ? "Supervisión" : "Organización académica" }))} currentId={module} onNavigate={id => navigate(id as Module)}>
@@ -150,7 +174,17 @@ export function AdminConsole() {
         {loading ? <p role="status" className="rounded-2xl border border-border p-6 text-muted-foreground">Cargando información…</p> : module === "summary" && summary ? <>
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[["users", "Usuarios registrados"], ["courses", "Materias"], ["enrollments", "Matrículas registradas"], ["assessments", "Evaluaciones"]].map(([key, label]) => <button key={key} onClick={() => navigate(key as Module)} className="rounded-2xl border border-border bg-card p-5 text-left hover:border-primary"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-3 text-4xl font-semibold">{summary.counts[key]}</p><p className="mt-3 flex items-center gap-1 text-xs text-primary">Gestionar<ChevronRight className="h-3 w-3"/></p></button>)}</section>
           <section className="grid gap-5 md:grid-cols-2"><div className="rounded-2xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">Actividad académica</h2><dl className="mt-4 grid grid-cols-2 gap-4">{["sections", "lessonPlans", "materials", "onlineClasses", "grades", "attendance"].map(k => <div key={k}><dt className="text-xs text-muted-foreground">{adminModules[k as AdminResource].label}</dt><dd className="mt-1 text-xl font-semibold">{summary.counts[k]}</dd></div>)}</dl><p className="mt-5 text-xs text-muted-foreground">Totales de documentos, incluidos registros históricos. Usa cada módulo para revisar su estado.</p></div><div className="rounded-2xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">Asistencia de IA</h2><dl className="mt-4 space-y-3 text-sm"><div>Proveedor configurado: <strong>{summary.ai.provider}</strong></div><div>Modelo: <strong>{summary.ai.model || "Configurado en servidor"}</strong></div><div>Gateway: <strong>{summary.ai.gatewayConfigured ? "Configuración presente" : "Revisar configuración"}</strong></div></dl><p className="mt-4 text-xs leading-5 text-muted-foreground">La presencia de configuración no demuestra disponibilidad. Realiza una consulta desde una materia para comprobar la conexión.</p><button className={buttonClass + " mt-5"} onClick={() => navigate("aiLogs")}>Ver actividad</button></div></section>
-          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-6"><h2 className="font-semibold">Comienza por el acceso y la oferta académica</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Registra docentes y estudiantes, asigna las materias, crea sus secciones y matricula a los estudiantes. Publica después las clases, materiales y evaluaciones.</p></section>
+          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
+            <h2 className="font-semibold">Organizar la oferta académica</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Crea una materia y su sección antes de matricular a un estudiante registrado.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {academicSetup.map(({ id, label, icon: Icon }) => (
+                <button key={id} type="button" className={buttonClass + " justify-start"} onClick={() => startAcademicSetup(id)}>
+                  <Icon size={17} className="shrink-0 text-primary" />{label}
+                </button>
+              ))}
+            </div>
+          </section>
         </> : module === "reports" ? <ReportView records={records} onDownload={download}/> : <>
           {resource === "settings" ? <div className="rounded-2xl border border-border bg-card p-6"><dl className="grid gap-4 md:grid-cols-2">{adminModules.settings.fields.map(f => <div key={f.key}><dt className="text-sm text-muted-foreground">{f.label}</dt><dd className="mt-1 whitespace-pre-wrap font-medium">{String(records[0]?.[f.key] || "Sin configurar")}</dd></div>)}</dl><button className={buttonClass + " mt-6"} onClick={() => open(records[0] || null)}>Editar configuración</button></div> : <>
             <div className="flex flex-wrap gap-3"><label className="relative min-w-48 flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground"/><input className={fieldClass + " pl-9"} aria-label="Buscar en esta página" placeholder="Buscar en esta página" value={search} onChange={e => setSearch(e.target.value)}/></label>{module !== "users" && resource && <select className={fieldClass + " max-w-xs"} aria-label="Filtrar materia en esta página" value={courseFilter} onChange={e => setCourseFilter(e.target.value)}><option value="">Todas las materias de esta página</option>{references.courses?.map(r => <option key={r.id} value={r.id}>{String(r.name)}</option>)}</select>}<button disabled={!filtered.length} className={buttonClass} onClick={() => download(`smart-learn-${module}-pagina.csv`, filtered)}><Download className="h-4 w-4"/>Exportar página</button></div>
@@ -158,7 +192,7 @@ export function AdminConsole() {
             <div className="space-y-3">{filtered.map(record => <article key={record.id} className="rounded-2xl border border-border bg-card p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="break-words font-semibold">{String(record.name || record.title || record.assessmentTitle || record.studentName || record.reason || record.feature || record.id)}</h2><p className="mt-1 break-all text-xs text-muted-foreground">{module === "users" ? `${record.email} · ${labelFor(record.role)}` : record.courseId ? lookup("courses", record.courseId) : module === "adminAudit" ? `Responsable: ${lookup("users", record.actorId)} · ${adminModules[record.resource as AdminResource]?.label || record.resource}` : record.userId ? `Usuario: ${lookup("users", record.userId)}` : ""}</p><div className="mt-3 flex flex-wrap gap-2 text-xs">{record.status != null && <span className="rounded-lg bg-secondary px-2 py-1">{labelFor(record.status)}</span>}{record.visibleToStudents != null && <span className="rounded-lg bg-primary/10 px-2 py-1 text-primary">{record.visibleToStudents ? "Publicado para estudiantes" : "Oculto"}</span>}{record.score != null && <span className="rounded-lg bg-secondary px-2 py-1">{String(record.score)} / {String(record.maxScore)}</span>}{record.date != null && <span className="rounded-lg bg-secondary px-2 py-1">{String(record.date)}</span>}{record.sectionId != null && <span className="rounded-lg bg-secondary px-2 py-1">Sección: {lookup("sections", record.sectionId)}</span>}{record.provider != null && <span className="rounded-lg bg-secondary px-2 py-1">{String(record.provider)} · {String(record.model || record.outcome || "")}</span>}</div></div>{resource && <button className={buttonClass} onClick={() => open(record)}>Editar</button>}</div>
               <details className="mt-3 text-xs text-muted-foreground"><summary className="cursor-pointer">{module === "adminAudit" ? "Ver cambios registrados" : "Ver ficha completa"}</summary><dl className="mt-3 grid gap-2">{Object.entries(record).map(([k, v]) => <div key={k} className="break-words"><dt className="font-medium">{adminModules[resource!]?.fields.find(f => f.key === k)?.label || ({ createdAt: "Fecha de registro", updatedAt: "Última actualización", reason: "Motivo", before: "Antes", after: "Después", id: "Identificador", recordId: "Registro afectado" } as Record<string, string>)[k] || k}</dt><dd className="mt-1 whitespace-pre-wrap">{typeof v === "object" ? JSON.stringify(v, null, 2) : labelFor(v)}</dd></div>)}</dl></details>
             </article>)}</div>{!filtered.length && <p className="rounded-2xl border border-dashed border-border p-8 text-center text-muted-foreground">No hay registros que mostrar.</p>}
-            <div className="flex gap-3"><button className={buttonClass} disabled={!cursor} onClick={() => setCursor(null)}>Primera página</button><button className={buttonClass} disabled={!nextCursor} onClick={() => setCursor(nextCursor)}>Siguiente página<ChevronRight className="h-4 w-4"/></button></div>
+            <div className="flex gap-3"><button className={buttonClass} disabled={!cursor} onClick={() => { setCursor(null); setSearch(""); setCourseFilter(""); }}>Primera página</button><button className={buttonClass} disabled={!nextCursor} onClick={() => { setCursor(nextCursor); setSearch(""); setCourseFilter(""); }}>Siguiente página<ChevronRight className="h-4 w-4"/></button></div>
           </>}
         </>}
       </section>

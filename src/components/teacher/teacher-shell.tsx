@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { BarChart3, BookOpen, Bot, CalendarCheck, ClipboardCheck, FolderOpen, Home, NotebookPen, Users, Video } from "lucide-react";
+import { BarChart3, BookOpen, Bot, CalendarCheck, ClipboardCheck, FolderOpen, Home, NotebookPen, Presentation, Users, Video } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { PortalFrame, type PortalItem } from "@/components/navigation/portal-frame";
 const items: PortalItem[] = [
@@ -11,6 +11,7 @@ const items: PortalItem[] = [
   { id: "/teacher/assessments", href: "/teacher/assessments", label: "Evaluaciones", icon: ClipboardCheck },
   { id: "/teacher/attendance", href: "/teacher/attendance", label: "Asistencia", icon: CalendarCheck },
   { id: "/teacher/materials", href: "/teacher/materials", label: "Materiales", icon: FolderOpen },
+  { id: "/teacher/presentations", href: "/teacher/presentations", label: "Presentaciones", icon: Presentation },
   { id: "/teacher/online-classes", href: "/teacher/online-classes", label: "Clases en línea", icon: Video },
   { id: "/teacher/ai", href: "/teacher/ai", label: "Asistente IA", icon: Bot },
   { id: "/teacher/reports", href: "/teacher/reports", label: "Reportes", icon: BarChart3 },
