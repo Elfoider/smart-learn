@@ -77,26 +77,26 @@ export function TeacherAiWorkspace() {
     finally { setLoading(false); }
   }
   return <div className="space-y-6">
-    <header className="rounded-3xl bg-[#071a22] p-8 text-white"><h1 className="text-3xl font-semibold">Asistente IA docente</h1><p className="mt-2 text-white/70">Genera borradores basados en tu materia y planificaciones. Revisa el resultado antes de utilizarlo.</p></header>
-    <form onSubmit={submit} className="grid gap-4 rounded-3xl border border-border bg-card p-6">
-      <fieldset disabled={loading || reading} className="grid min-w-0 gap-4">
-        <label className="grid gap-1 text-sm font-medium">Asignatura
-          <select required aria-label="Asignatura" value={courseId} onChange={event => setCourseId(event.target.value)} className="rounded-xl border bg-background p-3">
+    <header className="rounded-3xl bg-[#071a22] p-8 text-white"><h1 className="text-3xl font-semibold">Asistente IA docente</h1><p className="mt-2 text-white/70">Genera borradores para tu asignatura a partir del tema que indiques. Revisa el resultado antes de utilizarlo.</p></header>
+    <form onSubmit={submit} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 rounded-3xl border border-border bg-card p-4 sm:p-6">
+      <fieldset disabled={loading || reading} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+        <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Asignatura
+          <select required aria-label="Asignatura" value={courseId} onChange={event => setCourseId(event.target.value)} className="w-full min-w-0 rounded-xl border bg-background p-3">
             <option value="">Selecciona asignatura</option>
             {courses.filter(course => course.status !== "archived").map(course => <option key={course.id} value={course.id}>{course.name}</option>)}
           </select>
         </label>
-        <label className="grid gap-1 text-sm font-medium">Qué quieres generar
-          <select aria-label="Qué quieres generar" value={task} onChange={event => setTask(event.target.value as TeacherDraftTask)} className="rounded-xl border bg-background p-3">
+        <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Qué quieres generar
+          <select aria-label="Qué quieres generar" value={task} onChange={event => setTask(event.target.value as TeacherDraftTask)} className="w-full min-w-0 rounded-xl border bg-background p-3">
             {teacherDraftTasks.map(value => <option key={value} value={value}>{teacherDraftTemplates[value].label}</option>)}
           </select>
         </label>
-        <label className="grid gap-1 text-sm font-medium">Tema
-          <input required minLength={3} maxLength={220} aria-describedby="teacher-topic-hint" value={topic} onChange={event => setTopic(event.target.value)} className="rounded-xl border bg-background p-3" />
+        <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Tema
+          <input required minLength={3} maxLength={220} aria-describedby="teacher-topic-hint" value={topic} onChange={event => setTopic(event.target.value)} className="w-full min-w-0 rounded-xl border bg-background p-3" />
         </label>
         <p id="teacher-topic-hint" className="text-sm text-muted-foreground">{teacherDraftTemplates[task].hint}</p>
-        <label className="grid gap-1 text-sm font-medium">Instrucciones adicionales
-          <textarea maxLength={1200} value={instructions} onChange={event => setInstructions(event.target.value)} className="min-h-28 rounded-xl border bg-background p-3" />
+        <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Instrucciones adicionales
+          <textarea maxLength={1200} value={instructions} onChange={event => setInstructions(event.target.value)} className="min-h-28 w-full min-w-0 rounded-xl border bg-background p-3" />
         </label>
         {task === "plan" && <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={structuredPlan} onChange={event => setStructuredPlan(event.target.checked)} />
@@ -106,7 +106,7 @@ export function TeacherAiWorkspace() {
       {courseError && <p role="alert" className="text-sm text-danger">{courseError}</p>}
       <div className="rounded-xl border border-border p-4">
         <label htmlFor="teacher-reference" className="block text-sm font-medium">Archivo de referencia (opcional)</label>
-        <input ref={fileInput} id="teacher-reference" type="file" accept=".txt,text/plain" disabled={reading || loading} onChange={readReference} className="mt-2 block max-w-full text-sm" />
+        <input ref={fileInput} id="teacher-reference" type="file" accept=".txt,text/plain" disabled={reading || loading} onChange={readReference} className="mt-2 block w-full min-w-0 max-w-full text-sm" />
         <p className="mt-2 text-xs text-muted-foreground">TXT en UTF-8, hasta 16 KB. Se usan como máximo 3000 caracteres para generar el borrador.</p>
         {referenceName && <button type="button" onClick={clearReference} disabled={loading} className="mt-2 text-sm text-primary underline">Quitar referencia</button>}
       </div>
