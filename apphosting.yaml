@@ -4,7 +4,7 @@ env:
     availability:
       - RUNTIME
   - variable: LOCAL_AI_URL
-    value: https://desktop-2ckik7s.tail918b1e.ts.net
+    value: https://smartlearn-ia-defensa-538090496490.us-east4.run.app
     availability:
       - RUNTIME
   - variable: LOCAL_AI_TOKEN
@@ -16,7 +16,7 @@ env:
     availability:
       - RUNTIME
   - variable: LOCAL_AI_TIMEOUT_MS
-    value: "60000"
+    value: "120000"
     availability:
       - RUNTIME
   - variable: AI_FALLBACK_ENABLED
