@@ -69,3 +69,21 @@ export function lessonDraftText(lesson: GeneratedLesson) {
     "Actividades\n" + lesson.activities.map(value => "• " + value).join("\n"),
   ].join("\n\n");
 }
+
+const topicStopWords = new Set([
+  "acerca", "analisis", "clase", "como", "cuando", "durante", "epoca", "estudio",
+  "explica", "explicar", "genera", "historia", "introduccion", "planificacion",
+  "para", "sobre", "tema", "temas", "tiene", "unidad",
+]);
+
+function topicWords(value: string) {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().match(/[a-z0-9]+/g) ?? [];
+}
+
+export function draftMatchesTopic(topic: string, content: string) {
+  const keys = [...new Set(topicWords(topic).filter(word => word.length >= 4 && !topicStopWords.has(word)))];
+  if (!keys.length) return true;
+  const words = new Set(topicWords(content));
+  const matching = keys.filter(key => words.has(key) || words.has(key + "s") || (key.endsWith("s") && words.has(key.slice(0, -1))));
+  return matching.length >= Math.ceil(keys.length * 0.6);
+}

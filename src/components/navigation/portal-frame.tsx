@@ -78,8 +78,8 @@ export function PortalFrame({ role, items, currentId, onNavigate, children }: Pr
     <a href="#portal-content" className="portal-skip">Saltar al contenido</a>
     <aside className="portal-sidebar">
       <div className={cn("flex h-20 shrink-0 items-center", collapsed ? "justify-center" : "px-3")}><BrandMark compact={collapsed} /></div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">{navigation(!collapsed)}</div>
-      <div className="space-y-2 border-t border-border p-2">
+      <div className="flex-1 px-2 pb-3">{navigation(!collapsed)}</div>
+      <div className="shrink-0 space-y-2 border-t border-border p-2">
         {role === "student" && studentUtilities()}
         {!collapsed && <p className="truncate px-3 text-xs text-muted-foreground">{profile?.name} · {roleNames[role]}</p>}
         <button className="portal-nav-item" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expandir navegación" : "Contraer navegación"} title={collapsed ? "Expandir navegación" : "Contraer navegación"} aria-expanded={!collapsed}>{collapsed ? <ChevronsRight className="h-5 w-5" /> : <ChevronsLeft className="h-5 w-5" />}{!collapsed && "Contraer menú"}</button>

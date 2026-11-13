@@ -229,8 +229,8 @@ button {
 .brand-wordmark { width: 228px; height: 68px; }
 .portal-frame { --rail: 260px; min-height: 100vh; background: var(--background); }
 .portal-frame.is-collapsed { --rail: 76px; }
-.portal-sidebar { width: var(--rail); position: fixed; inset: 0 auto 0 0; z-index: 35; display: flex; flex-direction: column; background: var(--card); border-right: 1px solid var(--border); transition: width .22s ease; }
-.portal-body { margin-left: var(--rail); transition: margin-left .22s ease; }
+.portal-sidebar { width: var(--rail); position: fixed; inset: 0 auto 0 0; z-index: 35; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior-y: contain; background: var(--card); border-right: 1px solid var(--border); transition: width .22s ease; }
+.portal-body { min-width: 0; margin-left: var(--rail); transition: margin-left .22s ease; }
 .portal-toolbar { height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 22px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 94%, transparent); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 30; }
 .portal-content { max-width: 1920px; margin-inline: auto; padding: 24px; min-width: 0; }
 .portal-nav-item { display: flex; align-items: center; gap: 12px; min-height: 44px; width: 100%; border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted-foreground); transition: background .18s, color .18s, transform .18s; }
@@ -259,8 +259,10 @@ button:disabled { cursor: not-allowed; }
 @media (max-width: 1023px) {
   .portal-sidebar { display: none; }
   .portal-body { margin-left: 0; }
-  .portal-toolbar { padding: 0 12px; gap: 5px; }
-  .portal-content { padding: 16px 12px; }
+  .portal-toolbar { height: auto; min-height: 60px; flex-wrap: wrap; padding: 8px 12px; gap: 5px; }
+  .portal-toolbar > div.flex-1 { min-width: 5.5rem; }
+  .is-focused .portal-toolbar { height: auto; min-height: 48px; }
+  .portal-content { padding: 16px 12px max(16px, env(safe-area-inset-bottom)); }
   .portal-toolbar .portal-icon { width: 36px; height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {

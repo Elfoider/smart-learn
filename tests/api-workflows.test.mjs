@@ -109,7 +109,7 @@ test('API: gateway ocupado y timeout producen mensajes recuperables sin guardar 
 });
 test('API: docente solo genera para sus materias y estudiante no usa copiloto', async t => {
   setup(t);
-  const payload={courseId:'course2',task:'plan',topic:'Plan de clase'};
+  const payload={courseId:'course2',task:'plan',topic:'Clave primaria'};
   assert.equal((await teacher.POST(post(payload,'teacher'))).status,403);
   assert.equal((await teacher.POST(post({...payload,courseId:'course1'}))).status,403);
   assert.equal((await teacher.POST(post({...payload,courseId:'course1'},'teacher'))).status,200);
@@ -171,6 +171,7 @@ test('API docente limita la referencia y la entrega al modelo como contenido', a
   const input = {courseId:'course1', task:'plan', topic:'Clave primaria'};
   assert.equal((await teacher.POST(post({...input, reference:'x'.repeat(3001)}, 'teacher'))).status, 400);
   assert.equal(calls, 0);
+  generated = 'La clave primaria identifica cada fila.';
   const reference = 'Una clave primaria identifica cada fila.';
   assert.equal((await teacher.POST(post({...input, reference}, 'teacher'))).status, 200);
   assert.equal(JSON.parse(lastInput.contents).reference, reference);
@@ -184,7 +185,7 @@ test('API docente genera una planificación estructurada para el formulario', as
     unit: 'Unidad 1',
     objectives: ['Identificar una clave primaria'],
     contents: ['Identificadores únicos'],
-    lessonContent: 'Cada fila se identifica con un valor único dentro de su tabla.',
+    lessonContent: 'Cada clave primaria identifica una fila con un valor único dentro de su tabla.',
     activities: ['Seleccionar una clave para la tabla de estudiantes'],
     visibleToStudents: true,
   };
@@ -209,4 +210,42 @@ test('API docente usa una plantilla específica para temarios y mantiene la sali
   assert.equal((await response.json()).result, generated);
   assert.match(lastInput.systemInstruction, /temario progresivo/);
   assert.equal(lastInput.responseMimeType, undefined);
+});
+
+test('API docente prioriza el tema explícito y rechaza un borrador sobre otra clase', async t => {
+  setup(t);
+  records.set('courses/course1', {teacherId:'teacher', name:'Ciencias Sociales'});
+  records.set('lessonPlans/car-ab', {
+    teacherId:'teacher', courseId:'course1', title:'Batalla de Carabobo',
+  });
+  const input = {courseId:'course1', task:'plan', structuredPlan:true, topic:'La política durante la época de Marcos Pérez Jiménez'};
+  const draft = {
+    title: 'Planificación solicitada',
+    unit: 'Historia contemporánea',
+    objectives: ['Analizar un período histórico'],
+    contents: ['Campaña militar'],
+    activities: ['Elaborar una línea del tiempo de Carabobo'],
+    lessonContent: 'La batalla de Carabobo fue decisiva en el proceso independentista venezolano.',
+  };
+  generated = JSON.stringify(draft);
+  assert.equal((await teacher.POST(post(input, 'teacher'))).status, 422);
+  assert.equal(JSON.parse(lastInput.contents).topic, input.topic);
+  assert.doesNotMatch(lastInput.contents, /Carabobo/);
+  generated = JSON.stringify({
+    ...draft,
+    title: 'Política durante el gobierno de Marcos Pérez Jiménez',
+    contents: ['Política del Nuevo Ideal Nacional'],
+    activities: ['Contrastar políticas de Marcos Pérez Jiménez'],
+    lessonContent: 'El gobierno de Marcos Pérez Jiménez promovió obras públicas y restringió la oposición política.',
+  });
+  assert.equal((await teacher.POST(post(input, 'teacher'))).status, 200);
+});
+
+test('API docente también detecta el desvío en actividades de texto', async t => {
+  setup(t);
+  const input = {courseId:'course1', task:'activity', topic:'Política de Marcos Pérez Jiménez'};
+  generated = 'Actividad sobre la batalla de Carabobo y el proceso de independencia.';
+  assert.equal((await teacher.POST(post(input, 'teacher'))).status, 422);
+  generated = 'Analiza las políticas de Marcos Perez Jimenez y presenta una línea de tiempo.';
+  assert.equal((await teacher.POST(post(input, 'teacher'))).status, 200);
 });
