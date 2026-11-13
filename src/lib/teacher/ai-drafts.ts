@@ -31,8 +31,8 @@ export const teacherDraftTemplates: Record<TeacherDraftTask, { label: string; hi
   },
   quiz: {
     label: "Banco de preguntas",
-    hint: "Indica el tema y la dificultad deseada.",
-    instructions: "Genera hasta 5 preguntas de opción múltiple con cuatro alternativas cada una. Separa la clave y las explicaciones al final bajo el encabezado «Uso docente».",
+    hint: "Indica el tema. Puedes pedir entre 1 y 5 preguntas y especificar la dificultad. Por defecto se generan 3.",
+    instructions: "Entrega únicamente un banco de preguntas de opción múltiple sobre el tema. Genera 3 preguntas por defecto o la cantidad solicitada entre 1 y 5. Usa cuatro alternativas breves por pregunta. Al final, bajo «Uso docente», da la clave y una explicación de una frase por pregunta. Evita introducciones, objetivos y actividades de clase.",
   },
 };
 

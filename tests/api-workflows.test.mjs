@@ -249,3 +249,23 @@ test('API docente también detecta el desvío en actividades de texto', async t 
   generated = 'Analiza las políticas de Marcos Perez Jimenez y presenta una línea de tiempo.';
   assert.equal((await teacher.POST(post(input, 'teacher'))).status, 200);
 });
+
+test('API docente genera un banco breve aunque las instrucciones incluyan otra tarea', async t => {
+  setup(t);
+  generated = '¿Qué política impulsó el gobierno de Marcos Pérez Jiménez?';
+  const request = () => post({
+    courseId: 'course1', task: 'quiz', topic: 'Política del gobierno de Marcos Pérez Jiménez',
+    instructions: 'Prepara una clase introductoria con un objetivo medible.',
+  }, 'teacher');
+  const response = await teacher.POST(request());
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).result, generated);
+  assert.equal(lastInput.maxOutputTokens, 600);
+  assert.match(lastInput.systemInstruction, /task determina el tipo de borrador/);
+  assert.match(lastInput.systemInstruction, /3 preguntas por defecto/);
+  assert.match(lastInput.systemInstruction, /Evita introducciones, objetivos y actividades de clase/);
+  failure = new Error('ollama/gateway-504');
+  const timeout = await teacher.POST(request());
+  assert.equal(timeout.status, 504);
+  assert.match((await timeout.json()).error, /2 o 3 preguntas/);
+});
