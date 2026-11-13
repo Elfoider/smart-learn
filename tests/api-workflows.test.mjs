@@ -165,3 +165,14 @@ test('API: verdadero o falso recupera el formato, valida el índice y registra u
   assert.equal((await submitted.json()).correct, true);
   assert.equal(records.get('users/student/playgroundSessions/course1--real').attempts, 1);
 });
+
+test('API docente limita la referencia y la entrega al modelo como contenido', async t => {
+  setup(t);
+  const input = {courseId:'course1', task:'plan', topic:'Clave primaria'};
+  assert.equal((await teacher.POST(post({...input, reference:'x'.repeat(3001)}, 'teacher'))).status, 400);
+  assert.equal(calls, 0);
+  const reference = 'Una clave primaria identifica cada fila.';
+  assert.equal((await teacher.POST(post({...input, reference}, 'teacher'))).status, 200);
+  assert.equal(JSON.parse(lastInput.contents).reference, reference);
+  assert.match(lastInput.systemInstruction, /archivo de referencia/);
+});
