@@ -140,3 +140,28 @@ test('API: el tutor recibe contenido publicado y nunca observaciones internas', 
   assert.ok(!lastInput.contents.includes('INTERNAL-NOTE-MUST-NOT-LEAK'));
   assert.ok(!lastInput.contents.includes('Clase de otra sección'));
 });
+
+test('API: verdadero o falso recupera el formato, valida el índice y registra un intento', async t => {
+  setup(t);
+  generated = JSON.stringify({
+    question: 'Una clave primaria identifica de forma única una fila.',
+    options: ['Verdadero', 'Falso'],
+    correctIndex: 0,
+    explanation: 'Una clave primaria identifica cada fila de la tabla.',
+    hint: 'Piensa en cómo se identifica una fila.',
+    secondHint: 'Compara dos registros de la misma tabla.',
+  });
+  const result = await practice.POST(post({action:'generate', courseId:'course1', lessonId:'lesson1', format:'true-false'}));
+  assert.equal(result.status, 200);
+  const exercise = await result.json();
+  assert.deepEqual(exercise.options, ['Verdadero', 'Falso']);
+  assert.equal(exercise.format, 'true-false');
+  const catalog = await (await practice.GET(new Request('http://localhost/api?courseId=course1', {headers:{Authorization:'Bearer student'}}))).json();
+  assert.equal(catalog.pending.format, 'true-false');
+  assert.equal('correctIndex' in catalog.pending, false);
+  assert.equal((await practice.POST(post({action:'submit', challengeId:exercise.challengeId, answer:'2'}))).status, 400);
+  const submitted = await practice.POST(post({action:'submit', challengeId:exercise.challengeId, answer:'0'}));
+  assert.equal(submitted.status, 200);
+  assert.equal((await submitted.json()).correct, true);
+  assert.equal(records.get('users/student/playgroundSessions/course1--real').attempts, 1);
+});

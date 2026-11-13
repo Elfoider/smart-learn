@@ -17,3 +17,24 @@ test('rechaza alternativas repetidas, índices fuera de rango y respuesta incomp
   assert.throws(() => parseChallenge(JSON.stringify({ ...item, correctIndex: 4 }), []));
   assert.throws(() => parseChallenge('{}', []));
 });
+
+test('verdadero o falso valida las opciones y oculta la solución con dos pistas', () => {
+  const statement = {
+    ...item,
+    question: 'El estado permite conservar información entre renderizados.',
+    options: ['Verdadero', 'Falso'],
+    secondHint: 'Considera qué sucede cuando el componente vuelve a renderizarse.',
+  };
+  const exercise = parseChallenge(JSON.stringify(statement), [], 'true-false');
+  const visible = publicChallenge('id', exercise);
+  assert.equal(visible.format, 'true-false');
+  assert.equal(visible.secondHint, statement.secondHint);
+  assert.deepEqual(visible.options, ['Verdadero', 'Falso']);
+  assert.equal('correctIndex' in visible, false);
+  assert.throws(() => parseChallenge(JSON.stringify({ ...statement, correctIndex: 2 }), [], 'true-false'));
+  assert.throws(() => parseChallenge(JSON.stringify({ ...statement, options: ['Falso', 'Verdadero'] }), [], 'true-false'));
+});
+
+test('las prácticas anteriores conservan el formato de opción múltiple', () => {
+  assert.equal(publicChallenge('id', parseChallenge(JSON.stringify(item), [])).format, 'multiple-choice');
+});

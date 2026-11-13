@@ -8,8 +8,12 @@ import { useStudentEnrollments, useLiveCourse } from "@/components/student/live-
 import { usePlaygroundSession } from "@/hooks/use-playground-session";
 import { CourseTutor } from "@/components/student/course-tutor";
 
+import type { PracticeFormat } from "@/lib/practice/challenge";
+
+const formatLabels: Record<PracticeFormat, string> = { "multiple-choice": "Opción múltiple", "true-false": "Verdadero o falso" };
+
 type Lesson = { id: string; title: string; unit: string };
-type Challenge = { challengeId: string; question: string; options: string[]; hint: string; lessonId?: string; difficulty?: string; provider?: string };
+type Challenge = { challengeId: string; question: string; options: string[]; hint: string; secondHint?: string; format?: PracticeFormat; lessonId?: string; difficulty?: string; provider?: string };
 type Feedback = { correct: boolean; correctAnswer: string; explanation: string };
 type History = { id: string; question: string; topic: string; correct: boolean; difficulty: string };
 const field = "w-full rounded-xl border border-border bg-background p-3 text-sm";
@@ -38,11 +42,12 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [lessonId, setLessonId] = useState(initialLessonId);
   const [difficulty, setDifficulty] = useState("basico");
+  const [format, setFormat] = useState<PracticeFormat>("multiple-choice");
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [answer, setAnswer] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [history, setHistory] = useState<History[]>([]);
-  const [showHint, setShowHint] = useState(false);
+  const [hintLevel, setHintLevel] = useState(0);
   const [request, setRequest] = useState<"generate" | "submit" | null>(null);
   const loading = request !== null;
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -58,7 +63,7 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
         setLessons(data.lessons); setHistory(data.history);
         const selected = data.lessons.some((l: Lesson) => l.id === initialLessonId) ? initialLessonId : data.pending?.lessonId || data.lessons[0]?.id || "";
         setLessonId(selected);
-        if (data.pending?.lessonId === selected) { setChallenge(data.pending); setDifficulty(data.pending.difficulty || "basico"); }
+        if (data.pending?.lessonId === selected) { setChallenge(data.pending); setDifficulty(data.pending.difficulty || "basico"); setFormat(data.pending.format || "multiple-choice"); }
         setCatalogLoading(false);
       }).catch(cause => { if (!cancelled) { setError(cause.message || "No se pudieron cargar las clases."); setCatalogLoading(false); } });
     return () => { cancelled = true; };
@@ -75,8 +80,8 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
     if (loading || !lessonId) return;
     setRequest("generate"); setError("");
     try {
-      const data = await send({ action: "generate", courseId, lessonId, difficulty });
-      setChallenge(data); setAnswer(""); setFeedback(null); setShowHint(false);
+      const data = await send({ action: "generate", courseId, lessonId, difficulty, format });
+      setChallenge(data); setAnswer(""); setFeedback(null); setHintLevel(0);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Error al generar."); }
     finally { setRequest(null); }
   }
@@ -86,7 +91,7 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
     try {
       const result = await send({ action: "submit", challengeId: challenge.challengeId, answer });
       setFeedback(result);
-      setHistory(old => [{ id: challenge.challengeId, question: challenge.question, topic: lessons.find(l => l.id === lessonId)?.title || "Clase", correct: result.correct, difficulty }, ...old].slice(0, 10));
+      setHistory(old => [{ id: challenge.challengeId, question: challenge.question, topic: lessons.find(l => l.id === lessonId)?.title || "Clase", correct: result.correct, difficulty: challenge.difficulty || difficulty }, ...old].slice(0, 10));
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Error al responder."); }
     finally { setRequest(null); }
   }
@@ -95,9 +100,14 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
       <h2 className="flex items-center gap-2 font-semibold"><BookOpen size={18} className="text-primary" /> Configura tu práctica</h2>
       {catalogLoading && <p role="status">Cargando clases publicadas…</p>}
       {!catalogLoading && !lessons.length && <p className="text-sm text-muted-foreground">El docente todavía no publicó clases. Vuelve cuando haya contenido disponible.</p>}
-      <label className="block text-sm font-medium">Clase<select className={`${field} mt-2`} value={lessonId} disabled={loading || !lessons.length} onChange={e => { setLessonId(e.target.value); setChallenge(null); setAnswer(""); setFeedback(null); setShowHint(false); setError(""); }}>
+      <label className="block text-sm font-medium">Clase<select className={`${field} mt-2`} value={lessonId} disabled={loading || !lessons.length} onChange={e => { setLessonId(e.target.value); setChallenge(null); setAnswer(""); setFeedback(null); setHintLevel(0); setError(""); }}>
         {!lessons.length && <option value="">Sin clases publicadas</option>}{lessons.map(l => <option key={l.id} value={l.id}>{l.unit} · {l.title}</option>)}</select></label>
       <label className="block text-sm font-medium">Dificultad<select className={`${field} mt-2`} value={difficulty} disabled={loading} onChange={e => setDifficulty(e.target.value)}><option value="basico">Básico · reconocer</option><option value="intermedio">Intermedio · aplicar</option><option value="avanzado">Avanzado · analizar</option></select></label>
+      <label className="block text-sm font-medium">Tipo de ejercicio
+        <select className={`${field} mt-2`} value={format} disabled={loading} onChange={event => setFormat(event.target.value as PracticeFormat)}>
+          {Object.entries(formatLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>
       <button type="button" onClick={generate} disabled={!lessonId || loading} className={`${button} w-full`}><RotateCcw size={17} />{request === "generate" ? "Generando ejercicio…" : challenge ? "Crear otro ejercicio" : "Crear ejercicio"}</button>
       {request === "generate" && <p role="status" className="text-sm text-muted-foreground">La IA está preparando el ejercicio. La primera consulta puede tardar más mientras carga el modelo.</p>}
       <Link className="block text-sm text-primary underline" href={`/student/courses/${courseId}`}>Volver al aula</Link>
@@ -107,11 +117,15 @@ function PracticeCourse({ courseId, initialLessonId }: { courseId: string; initi
       {error && <p role="alert" className="rounded-xl border border-red-500/30 p-4 text-red-500">{error}</p>}
       <article aria-busy={loading} className="rounded-3xl border border-border bg-card p-6 md:p-8">
         {!challenge ? <div className="py-12 text-center"><Sparkles className="mx-auto text-primary" size={32} /><h2 className="mt-4 text-2xl font-semibold">Una nueva oportunidad para aprender</h2><p className="mx-auto mt-3 max-w-md text-muted-foreground">Selecciona una clase y pulsa Crear ejercicio. Después puedes pedir una pista y comprobar tu respuesta.</p></div> : <>
-          <div className="mb-5 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-primary/15 px-3 py-1 text-primary">{challenge.provider === "ollama" ? "Ollama" : "IA"}</span><span className="rounded-full bg-secondary px-3 py-1">{challenge.difficulty || difficulty}</span><span className="rounded-full bg-secondary px-3 py-1">{feedback ? "Completado" : "En práctica"}</span></div>
+          <div className="mb-5 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-primary/15 px-3 py-1 text-primary">{challenge.provider === "ollama" ? "Ollama" : "IA"}</span><span className="rounded-full bg-secondary px-3 py-1">{challenge.difficulty || difficulty}</span><span className="rounded-full bg-secondary px-3 py-1">{formatLabels[challenge.format ?? "multiple-choice"]}</span><span className="rounded-full bg-secondary px-3 py-1">{feedback ? "Completado" : "En práctica"}</span></div>
           <h2 className="text-xl font-semibold leading-relaxed">{challenge.question}</h2>
           <fieldset disabled={!!feedback || loading} className="mt-6 space-y-3"><legend className="sr-only">Elige una respuesta</legend>{challenge.options.map((option,index) => <label key={index} className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4 has-[:checked]:border-primary has-[:checked]:bg-primary/10"><input type="radio" className="mt-1 accent-primary" name="practice-answer" checked={answer === String(index)} onChange={() => setAnswer(String(index))} /><span>{option}</span></label>)}</fieldset>
-          <div className="mt-5 flex flex-wrap gap-3">{!feedback && <button type="button" className={button} disabled={loading || answer === ""} onClick={submit}>{request === "submit" ? "Comprobando…" : "Comprobar respuesta"}</button>}<button type="button" className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm" disabled={loading} aria-expanded={showHint} aria-controls="practice-hint" onClick={() => setShowHint(v => !v)}><Lightbulb size={17} />{showHint ? "Ocultar pista" : "Dame una pista"}</button></div>
-          <p id="practice-hint" hidden={!showHint} className="mt-4 rounded-xl bg-primary/10 p-4 text-sm">{challenge.hint}</p>
+          <div className="mt-5 flex flex-wrap gap-3">{!feedback && <button type="button" className={button} disabled={loading || answer === ""} onClick={submit}>{request === "submit" ? "Comprobando…" : "Comprobar respuesta"}</button>}<button type="button" className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm" disabled={loading} aria-expanded={hintLevel > 0} aria-controls="practice-hint" onClick={() => setHintLevel(hintLevel ? 0 : 1)}><Lightbulb size={17} />{hintLevel ? "Ocultar pistas" : "Dame una pista"}</button></div>
+          <div id="practice-hint" hidden={!hintLevel} className="mt-4 space-y-3 rounded-xl bg-primary/10 p-4 text-sm">
+            <p>{challenge.hint}</p>
+            {challenge.secondHint && hintLevel === 1 && <button type="button" disabled={loading} className="font-semibold text-primary underline" onClick={() => setHintLevel(2)}>Ver segunda pista</button>}
+            {hintLevel === 2 && <p role="status">{challenge.secondHint}</p>}
+          </div>
           {feedback && <div role="status" className="mt-6 rounded-2xl border border-primary/20 bg-primary/10 p-5"><h3 className="flex items-center gap-2 font-semibold"><CheckCircle2 size={19} />{feedback.correct ? "¡Bien hecho!" : "Aprender también es volver a intentarlo"}</h3><p className="mt-3 text-sm">Respuesta correcta: {feedback.correctAnswer}</p><p className="mt-3 whitespace-pre-wrap leading-7">{feedback.explanation}</p><button type="button" className={`${button} mt-4`} disabled={loading} onClick={generate}>Practicar con otro ejercicio</button></div>}
         </>}
       </article>
