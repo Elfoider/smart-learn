@@ -19,12 +19,14 @@ export function TeacherAiWorkspace() {
   const [reviewDraft, setReviewDraft] = useState(false);
   const [generationError, setGenerationError] = useState("");
   const [topic, setTopic] = useState("");
-  const [instructions, setInstructions] = useState("");
+  const [taskInstructions, setTaskInstructions] = useState<Partial<Record<TeacherDraftTask, string>>>({});
+  const instructions = taskInstructions[task] ?? "";
   const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [reference, setReference] = useState("");
   const [referenceName, setReferenceName] = useState("");
   const [reading, setReading] = useState(false);
+  const [resultTask, setResultTask] = useState<TeacherDraftTask | null>(null);
   const [resultTitle, setResultTitle] = useState("");
   const [resultCourse, setResultCourse] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -67,9 +69,16 @@ export function TeacherAiWorkspace() {
     try {
       const token = await user.getIdToken();
       const response = await fetch("/api/ai/teacher", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ courseId, task, topic, instructions, reference, structuredPlan: task === "plan" && structuredPlan }) });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo generar.");
+      const payload = await response.json().catch(() => null);
+      if (response.status === 504 && !payload?.error) {
+        throw new Error(task === "quiz"
+          ? "La generación superó el tiempo de espera. Intenta con 2 o 3 preguntas."
+          : "La generación superó el tiempo de espera. Intenta con un borrador más breve.");
+      }
+      if (!response.ok) throw new Error(payload?.error || "No se pudo generar.");
+      if (typeof payload?.result !== "string" || !payload.result.trim()) throw new Error("La IA no devolvió un borrador.");
       setResult(payload.result);
+      setResultTask(task);
       setGeneratedDraft(payload.lesson ? { ...payload.lesson, courseId } : null);
       setResultTitle(topic.trim());
       setResultCourse(courses.find(course => course.id === courseId)?.name ?? "");
@@ -87,7 +96,10 @@ export function TeacherAiWorkspace() {
           </select>
         </label>
         <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Qué quieres generar
-          <select aria-label="Qué quieres generar" value={task} onChange={event => setTask(event.target.value as TeacherDraftTask)} className="w-full min-w-0 rounded-xl border bg-background p-3">
+          <select aria-label="Qué quieres generar" value={task} onChange={event => {
+            setTask(event.target.value as TeacherDraftTask);
+            setGenerationError("");
+          }} className="w-full min-w-0 rounded-xl border bg-background p-3">
             {teacherDraftTasks.map(value => <option key={value} value={value}>{teacherDraftTemplates[value].label}</option>)}
           </select>
         </label>
@@ -96,7 +108,7 @@ export function TeacherAiWorkspace() {
         </label>
         <p id="teacher-topic-hint" className="text-sm text-muted-foreground">{teacherDraftTemplates[task].hint}</p>
         <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 text-sm font-medium">Instrucciones adicionales
-          <textarea maxLength={1200} value={instructions} onChange={event => setInstructions(event.target.value)} className="min-h-28 w-full min-w-0 rounded-xl border bg-background p-3" />
+          <textarea maxLength={1200} value={instructions} placeholder={task === "quiz" ? "Ejemplo: 3 preguntas de dificultad básica, con respuestas al final." : undefined} onChange={event => setTaskInstructions(previous => ({ ...previous, [task]: event.target.value }))} className="min-h-28 w-full min-w-0 rounded-xl border bg-background p-3" />
         </label>
         {task === "plan" && <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={structuredPlan} onChange={event => setStructuredPlan(event.target.checked)} />
@@ -116,8 +128,8 @@ export function TeacherAiWorkspace() {
       {loading && <p role="status" className="text-sm text-muted-foreground">La primera consulta puede tardar mientras inicia el modelo.</p>}
       {generationError && <p role="alert" className="text-sm text-danger">{generationError}</p>}
     </form>
-    {result && <section className="space-y-3 rounded-3xl border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">{generatedDraft ? "Planificación generada" : "Borrador editable"}</h2>
+    {result && resultTask === task && <section className="space-y-3 rounded-3xl border border-border bg-card p-6">
+      <h2 className="text-lg font-semibold">{loading || generationError ? "Borrador anterior" : generatedDraft ? "Planificación generada" : task === "quiz" ? "Banco de preguntas" : "Borrador editable"}</h2>
       {generatedDraft && <p className="text-sm text-muted-foreground">Abre el formulario para editar el contenido, asignar fechas y seleccionar la sección.</p>}
       <textarea aria-label="Borrador generado" value={result} readOnly={Boolean(generatedDraft)} onChange={event => setResult(event.target.value)} className="min-h-72 w-full rounded-xl border p-4 leading-7" />
       <div className="flex flex-wrap gap-2">
