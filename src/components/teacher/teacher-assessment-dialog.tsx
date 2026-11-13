@@ -1,5 +1,6 @@
 "use client";
 
+import { PreviewContent, PublicationPreview } from "./publication-preview";
 import {
   BarChart3,
   CalendarRange,
@@ -268,6 +269,8 @@ export function TeacherAssessmentDialog({
         ],
   );
 
+  const [reviewing, setReviewing] = useState(false);
+
   const [formError, setFormError] =
     useState<string | null>(null);
 
@@ -424,6 +427,7 @@ export function TeacherAssessmentDialog({
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+    if (saving) return;
 
     const validationError =
       validateForm();
@@ -434,6 +438,12 @@ export function TeacherAssessmentDialog({
     }
 
     setFormError(null);
+
+    if (!reviewing) {
+      setReviewing(true);
+      return;
+    }
+
 
     const values:
       TeacherAssessmentFormValues = {
@@ -535,6 +545,7 @@ export function TeacherAssessmentDialog({
                 void handleSubmit(event);
               }}
             >
+              <fieldset hidden={reviewing} disabled={reviewing || saving} className="min-w-0 border-0 p-0">
               <section className="grid gap-5 md:grid-cols-2">
                 <FormField label="Asignatura">
                   <select
@@ -1205,6 +1216,20 @@ export function TeacherAssessmentDialog({
                   </div>
                 </button>
               </section>
+              </fieldset>
+              {reviewing && (
+                <PublicationPreview
+                  title={title}
+                  course={courses.find(course => course.id === courseId)?.name}
+                  section={sections.find(section => section.id === sectionId)?.code}
+                  visible={status !== "archived" && visibleToStudents}
+                >
+                  <PreviewContent title="Descripción" text={description} />
+                  <PreviewContent title="Instrucciones" text={instructions} />
+                  <PreviewContent title="Rúbrica" text={rubric.map(item => `${item.title} · ${item.points} puntos\n${item.description}`).join("\n\n")} />
+                  <p className="text-sm">Ponderación: {weightPercentage}% · Puntaje máximo: {maxScore}</p>
+                </PublicationPreview>
+              )}
 
               {formError && (
                 <p className="mt-5 rounded-2xl border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
@@ -1216,10 +1241,10 @@ export function TeacherAssessmentDialog({
                 <button
                   type="button"
                   disabled={saving}
-                  onClick={onClose}
+                  onClick={reviewing ? () => setReviewing(false) : onClose}
                   className="min-h-11 rounded-2xl border border-border bg-background px-5 text-sm font-semibold text-muted-foreground"
                 >
-                  Cancelar
+                  {reviewing ? "Volver a editar" : "Cancelar"}
                 </button>
 
                 <button
@@ -1239,9 +1264,7 @@ export function TeacherAssessmentDialog({
                     />
                   )}
 
-                  {assessment
-                    ? "Guardar cambios"
-                    : "Crear evaluación"}
+                  {reviewing ? (assessment ? "Guardar cambios" : "Crear evaluación") : "Revisar"}
                 </button>
               </div>
             </form>
